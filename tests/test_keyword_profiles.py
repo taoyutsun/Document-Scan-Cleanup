@@ -106,7 +106,7 @@ class ProfileTests(unittest.TestCase):
             state=app.gui(smoke_test=True,profile_store=self.store,smoke_callback=actions)
             errors.assert_not_called()
         self.assertEqual(state['keyword_source'],'local_profile')
-        self.assertEqual(state['keyword_count'],2);self.assertEqual(len(state['profile_buttons']),4)
+        self.assertEqual(state['keyword_count'],2);self.assertEqual(len(state['profile_buttons']),6)
         fresh=app.gui(smoke_test=True,profile_store=self.store)
         self.assertEqual(fresh['keyword_sha256'],state['keyword_sha256'])
         restored=app.gui(smoke_test=True,profile_store=self.store,smoke_callback=lambda ui:ui['restore']())
@@ -145,6 +145,37 @@ class ProfileTests(unittest.TestCase):
         target=self.base/'example.zip'
         with ZipFile(target,'w') as archive:archive.writestr('Document-Scan-Cleanup/profiles/example.keywords.json','{}')
         with self.assertRaises(ValueError):audit_public.audit_zip(target)
+
+    def test_reload_discovers_external_profile_and_startup_selection(self):
+        def actions(ui):
+            identifier,_=self.store.save('New example',['Project Elm'])
+            self.store.set_startup(identifier);ui['reload']()
+        result=app.gui(smoke_test=True,profile_store=self.store,smoke_callback=actions)
+        self.assertEqual(result['profile_name'],'New example')
+        self.assertEqual(result['profiles_available'],1)
+        self.assertEqual(result['keyword_count'],1)
+        self.assertTrue(Path(result['active_profile_file']).is_file())
+
+    def test_reload_cancel_keeps_unsaved_keywords(self):
+        def actions(ui):ui['keywords'].set('Unsaved example');ui['reload']()
+        with patch('tkinter.messagebox.askyesno',return_value=False):
+            result=app.gui(smoke_test=True,profile_store=self.store,smoke_callback=actions)
+        self.assertEqual(result['keyword_source'],'custom')
+        self.assertEqual(result['keyword_count'],1)
+        self.assertFalse(self.store.settings.exists())
+
+    def test_open_profile_folder_uses_actual_user_directory(self):
+        with patch('os.startfile') as opened:
+            app.gui(smoke_test=True,profile_store=self.store,smoke_callback=lambda ui:ui['open_folder']())
+        opened.assert_called_once_with(str(self.store.profiles))
+        self.assertTrue(self.store.profiles.is_dir())
+
+    def test_author_links_fit_normal_and_smaller_windows(self):
+        for size,scale in [('1140x880',1.333),('900x760',1.333),('900x640',1.333),('1140x880',2.0),('1040x740',1.75)]:
+            with self.subTest(size=size,scale=scale):
+                result=app.gui(smoke_test=True,profile_store=self.store,smoke_size=size,smoke_scale=scale)
+                self.assertTrue(result['layout']['author_links_visible'],result['layout'])
+                self.assertGreater(result['layout']['author_links_height'],0)
 
 
 if __name__=='__main__':unittest.main()

@@ -2,6 +2,14 @@
 
 [繁體中文說明](README.md) · [English README](README.en.md)
 
+## 3.2.1 — 2026-10-01
+
+- 新增「重新載入啟動清單」「開啟清單資料夾」與已儲存清單數量，方便確認私人設定位置與載入狀態。
+- 改用可縮放視窗配置，保留底部作者連結；結果清單及紀錄區隨視窗縮放。
+- 重新載入前保護未儲存的關鍵字修改，私人清單格式與公開預設維持不變。
+
+Adds startup-profile reload, a profile-folder button and saved-list count. A responsive layout reserves the author footer while resizing results/logs. Reload asks before discarding unsaved keyword edits; profile format and public defaults are unchanged.
+
 ## 3.2.0 — 2026-10-01
 
 - 新增本機關鍵字清單：載入、儲存、切換、設為 GUI 啟動預設及恢復通用預設。

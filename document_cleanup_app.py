@@ -10,7 +10,7 @@ import document_cleanup_core as core
 import app_metadata as meta
 import keyword_profiles as profiles
 
-def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_callback=None):
+def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_callback=None,smoke_size=None,smoke_scale=None):
     import tkinter as tk
     from tkinter import ttk,filedialog,messagebox,simpledialog
     store=profile_store if profile_store is not None else profiles.ProfileStore()
@@ -20,47 +20,63 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
         active_id=None;active_profile={'name':'自訂（未儲存）','keywords':initial_words}
     root=tk.Tk()
     if smoke_test:root.withdraw()
+    if smoke_test and smoke_scale is not None:root.tk.call('tk','scaling',smoke_scale)
     root.title(meta.APP_NAME+' '+core.VERSION)
-    root.geometry('1140x880');root.minsize(900,760)
+    available_height=max(480,root.winfo_screenheight()-100)
+    root.geometry(smoke_size if smoke_test and smoke_size else f'1140x{min(880,available_height)}')
+    root.minsize(900,min(640,available_height))
+    root.columnconfigure(0,weight=1)
+    root.rowconfigure(7,weight=3,minsize=40)
+    root.rowconfigure(10,weight=1,minsize=24)
     paths=list(initial);reports={};errors={};selection=set();rows={};events=queue.Queue();busy=False
     dest_last=None
     title=ttk.Label(root,text='交付文件前，檢查並整理指定內容與範本殘留',font=('Microsoft JhengHei',16))
-    title.pack(anchor='w',padx=16,pady=(14,5))
-    ttk.Label(root,text='原檔保留。舊 Office／RTF 需桌面版 Office 轉檔；PDF 刪除整個文字物件；郵件附件保留。').pack(anchor='w',padx=16)
+    title.grid(row=0,column=0,sticky='ew',padx=16,pady=(14,5))
+    intro=ttk.Label(root,text='原檔保留。舊 Office／RTF 需桌面版 Office 轉檔；PDF 刪除整個文字物件；郵件附件保留。')
+    intro.grid(row=1,column=0,sticky='ew',padx=16)
     keywords=tk.StringVar(value='; '.join(active_profile['keywords']))
-    entryrow=ttk.Frame(root);entryrow.pack(fill='x',padx=16,pady=10)
+    entryrow=ttk.Frame(root);entryrow.grid(row=2,column=0,sticky='ew',padx=16,pady=10)
     ttk.Label(entryrow,text='關鍵字（分號分隔）：').pack(side='left')
     keyentry=ttk.Entry(entryrow,textvariable=keywords);keyentry.pack(side='left',fill='x',expand=True)
-    profile_row=ttk.Frame(root);profile_row.pack(fill='x',padx=16,pady=(0,8))
+    profile_row=ttk.Frame(root);profile_row.grid(row=3,column=0,sticky='ew',padx=16,pady=(0,8))
     ttk.Label(profile_row,text='關鍵字清單：').pack(side='left')
     profile_combo=ttk.Combobox(profile_row,state='readonly',width=25);profile_combo.pack(side='left',padx=(0,8))
     profile_buttons=[];profile_choices=[]
     profile_note=tk.StringVar(value=startup_warning)
-    ttk.Label(root,textvariable=profile_note,wraplength=1080).pack(anchor='w',padx=16,pady=(0,5))
-    toolbar=ttk.Frame(root);toolbar.pack(fill='x',padx=16,pady=(0,8))
+    profile_note_row=ttk.Frame(root);profile_note_row.grid(row=4,column=0,sticky='ew',padx=16,pady=(0,5))
+    profile_note_row.columnconfigure(0,weight=1)
+    profile_note_label=ttk.Label(profile_note_row,textvariable=profile_note,wraplength=700)
+    profile_note_label.grid(row=0,column=0,sticky='ew')
+    profile_utilities=ttk.Frame(profile_note_row);profile_utilities.grid(row=0,column=1,sticky='e',padx=(8,0))
+    toolbar=ttk.Frame(root);toolbar.grid(row=5,column=0,sticky='ew',padx=16,pady=(0,8))
     all_buttons=[]
-    files=ttk.Treeview(root,columns=('format','status'),show='tree headings',height=4)
+    files=ttk.Treeview(root,columns=('format','status'),show='tree headings',height=3)
     files.heading('#0',text='檔案');files.heading('format',text='格式');files.heading('status',text='掃描狀態')
     files.column('#0',width=680);files.column('format',width=70);files.column('status',width=270)
-    files.pack(fill='x',padx=16)
-    pane=ttk.Frame(root);pane.pack(fill='both',expand=True,padx=16,pady=8)
+    files.grid(row=6,column=0,sticky='ew',padx=16)
+    pane=ttk.Frame(root);pane.grid(row=7,column=0,sticky='nsew',padx=16,pady=8)
     hits=ttk.Treeview(pane,columns=('check','file','where','kind','context'),show='headings',height=12)
     for col,text,width in [('check','清理',55),('file','檔案',200),('where','位置',190),('kind','類型',130),('context','命中內容',460)]:
         hits.heading(col,text=text);hits.column(col,width=width,stretch=(col=='context'))
     scroll=ttk.Scrollbar(pane,orient='vertical',command=hits.yview);hits.configure(yscrollcommand=scroll.set)
     hits.pack(side='left',fill='both',expand=True);scroll.pack(side='right',fill='y')
-    options=ttk.Frame(root);options.pack(fill='x',padx=16)
+    options=ttk.Frame(root);options.grid(row=8,column=0,sticky='ew',padx=16)
     mode=tk.StringVar(value='keyword');prune=tk.BooleanVar(value=True)
     ttk.Label(options,text='文字處理：').pack(side='left')
     ttk.Radiobutton(options,text='只移除關鍵字',variable=mode,value='keyword').pack(side='left',padx=6)
     ttk.Radiobutton(options,text='清空選定段落／文字行',variable=mode,value='block').pack(side='left',padx=6)
     ttk.Checkbutton(options,text='同時清理 PPT 未使用範本',variable=prune).pack(side='left',padx=16)
-    ttk.Label(root,text='段落模式保留框架與格式，可能改變換行。名稱／屬性只清理字樣。雙擊結果可查看內容；點第一欄或按空白鍵切換勾選。').pack(anchor='w',padx=16,pady=6)
-    log=tk.Text(root,height=8,wrap='word',font=('Microsoft JhengHei',10));log.pack(fill='x',padx=16)
+    help_label=ttk.Label(root,text='段落模式保留框架與格式，可能改變換行。名稱／屬性只清理字樣。雙擊結果可查看內容；點第一欄或按空白鍵切換勾選。')
+    help_label.grid(row=9,column=0,sticky='ew',padx=16,pady=6)
+    log_frame=ttk.Frame(root);log_frame.grid(row=10,column=0,sticky='nsew',padx=16)
+    log=tk.Text(log_frame,height=4,wrap='word',font=('Microsoft JhengHei',10))
+    log_scroll=ttk.Scrollbar(log_frame,orient='vertical',command=log.yview);log.configure(yscrollcommand=log_scroll.set)
+    log.pack(side='left',fill='both',expand=True);log_scroll.pack(side='right',fill='y')
     status=tk.StringVar(value='選擇檔案後按「掃描」。掃描不修改來源文件。')
-    ttk.Label(root,textvariable=status).pack(anchor='w',padx=16,pady=10)
-    about=ttk.LabelFrame(root,text='關於作者');about.pack(fill='x',padx=16,pady=(0,12))
-    ttk.Label(about,text=meta.AUTHOR_DESCRIPTION,wraplength=1080).pack(anchor='w',padx=8,pady=(5,2))
+    status_label=ttk.Label(root,textvariable=status);status_label.grid(row=11,column=0,sticky='ew',padx=16,pady=8)
+    about=ttk.LabelFrame(root,text='關於作者');about.grid(row=12,column=0,sticky='ew',padx=16,pady=(0,12))
+    author_label=ttk.Label(about,text=meta.AUTHOR_DESCRIPTION,wraplength=1080)
+    author_label.pack(anchor='w',padx=8,pady=(5,2))
     links=ttk.Frame(about);links.pack(anchor='w',padx=8,pady=(0,5))
     import webbrowser,os
     for label,url in [('亞瑟 ASK 部落格',meta.BLOG_URL),('Facebook',meta.FACEBOOK_URL)]:
@@ -68,6 +84,14 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
         link.bind('<Button-1>',lambda event,u=url:webbrowser.open(u))
     source=ttk.Label(links,text='檢視原始碼'+('' if meta.SOURCE_REPO_URL else '（本機）'),foreground='#175a9a',cursor='hand2');source.pack(side='left')
     source.bind('<Button-1>',lambda event:webbrowser.open(meta.SOURCE_REPO_URL) if meta.SOURCE_REPO_URL else os.startfile(str(meta.SOURCE_DIRECTORY)))
+
+    def wrap_labels(event):
+        if event.widget!=root:return
+        width=max(300,event.width-32)
+        for label in [title,intro,help_label,status_label]:label.configure(wraplength=width)
+        author_label.configure(wraplength=max(260,width-24))
+        profile_note_label.configure(wraplength=max(180,width-profile_utilities.winfo_reqwidth()-8))
+    root.bind('<Configure>',wrap_labels)
 
     def keylist():return [w.strip() for w in keywords.get().split(';') if w.strip()]
     def refresh_profiles():
@@ -82,7 +106,7 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
 
     def profile_description():
         dirty=keylist()!=active_profile['keywords']
-        profile_note.set(f"目前：{active_profile['name']}"+('（已修改，尚未儲存）' if dirty else '')+'；清單僅存於本機，修改不會自動儲存。')
+        profile_note.set(f"目前：{active_profile['name']}"+('（已修改，尚未儲存）' if dirty else '')+f'；本機已儲存 {max(0,len(profile_choices)-1)} 份清單。')
 
     def apply_profile(identifier,profile):
         nonlocal active_id,active_profile
@@ -133,8 +157,26 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
             profile_note.set('已恢復通用啟動預設；個人清單保留，可從下拉選單重新載入。')
         except Exception as exc:messagebox.showerror('恢復通用預設',str(exc))
 
+    def reload_startup():
+        nonlocal startup_warning
+        if keylist()!=active_profile['keywords'] and not messagebox.askyesno('重新載入啟動清單','目前關鍵字有尚未儲存的修改，是否放棄修改並重新載入？',parent=root):return
+        try:
+            identifier,profile,warning=store.startup()
+            startup_warning=warning
+            apply_profile(identifier,profile)
+            if warning:profile_note.set(warning)
+        except Exception as exc:messagebox.showerror('重新載入啟動清單',str(exc))
+
+    def open_profile_folder():
+        try:
+            store.profiles.mkdir(parents=True,exist_ok=True)
+            os.startfile(str(store.profiles))
+        except Exception as exc:messagebox.showerror('開啟清單資料夾',str(exc))
+
     for label,fn in [('載入清單',import_profile),('儲存清單',save_profile),('設為啟動預設',set_startup),('恢復通用預設',restore_generic)]:
         b=ttk.Button(profile_row,text=label,command=fn);b.pack(side='left',padx=(0,7));profile_buttons.append(b)
+    for label,fn in [('重新載入啟動清單',reload_startup),('開啟清單資料夾',open_profile_folder)]:
+        b=ttk.Button(profile_utilities,text=label,command=fn);b.pack(side='left',padx=(7,0));profile_buttons.append(b)
     profile_combo.bind('<<ComboboxSelected>>',choose_profile)
     def update_controls():
         for b in all_buttons:b.configure(state='disabled' if busy else 'normal')
@@ -316,15 +358,23 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
     elif skipped:profile_note.set(f'略過 {skipped} 份無效清單；有效清單可從下拉選單載入。')
     else:profile_description()
     if smoke_test:
-        if smoke_callback:smoke_callback({'keywords':keywords,'save':save_profile,'startup':set_startup,'restore':restore_generic,'import':import_profile,'combo':profile_combo,'choose':choose_profile})
+        if smoke_callback:smoke_callback({'keywords':keywords,'save':save_profile,'startup':set_startup,'restore':restore_generic,'import':import_profile,'combo':profile_combo,'choose':choose_profile,'reload':reload_startup,'open_folder':open_profile_folder})
         root.update_idletasks()
+        # Withdrawn windows need a configure event to exercise their layout without taking focus.
+        root.event_generate('<Configure>',width=root.winfo_width(),height=root.winfo_height())
+        root.update_idletasks()
+        footer_visible=about.winfo_y()+about.winfo_height()<=root.winfo_height() and links.winfo_y()+links.winfo_height()<=about.winfo_height()
         result={'version':core.VERSION,'title':root.title(),'buttons':[b.cget('text') for b in all_buttons],
                 'files':len(files.get_children()),'clean_disabled_initially':str(clean_btn.cget('state'))=='disabled',
                 'author':meta.AUTHOR,'license':meta.LICENSE_NAME,'source_link':'public' if meta.SOURCE_REPO_URL else 'local',
                 'profile_buttons':[b.cget('text') for b in profile_buttons],'keyword_count':len(keylist()),
                 'keyword_sha256':core.digest(json.dumps(keylist(),ensure_ascii=False).encode('utf-8')),
                 'keyword_source':'local_profile' if active_id else 'generic' if keylist()==core.DEFAULT_WORDS else 'custom',
-                'startup_warning':startup_warning}
+                'startup_warning':startup_warning,'profile_name':active_profile['name'],
+                'profiles_available':max(0,len(profile_choices)-1),'settings_directory':str(store.directory),
+                'active_profile_file':str(store.profile_path(active_id)) if active_id else None,
+                'layout':{'width':root.winfo_width(),'height':root.winfo_height(),'author_links_visible':footer_visible,
+                          'footer_y':about.winfo_y(),'footer_height':about.winfo_height(),'author_links_height':links.winfo_height()}}
         root.destroy();return result
     poll();root.mainloop()
 

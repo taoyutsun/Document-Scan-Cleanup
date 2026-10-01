@@ -39,6 +39,10 @@ Keep general built-in examples or save your own working lists. **Personal profil
 
 On Windows, lists live in `%APPDATA%\DocumentScanCleanup\profiles\`; `keyword-settings.json` in the parent folder records the startup selection. Separate identifiers prevent name collisions. Edits are not saved automatically. Invalid startup settings/profile files trigger a visible fallback to generic defaults without overwriting the damaged files.
 
+**開啟清單資料夾** opens the actual profile folder; the interface shows the saved profile count. **重新載入啟動清單** rereads the saved startup selection after external changes, asking before discarding unsaved edits. Profiles are in the `profiles` subfolder; `keyword-settings.json` stores only the selection.
+
+Results and logs resize with the window while space remains reserved for author links at the bottom, without requiring maximization.
+
 Import example, using fictional terms only:
 
 ```json

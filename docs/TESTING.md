@@ -31,6 +31,8 @@ GitHub Actions runs the synthetic suite, the public-file audit and a Windows bui
 
 ## Portable executable checks
 
+Version 3.2.1 passed 49 synthetic tests, including hidden layout checks for five window-size/font-scale combinations, profile-folder opening with a mocked shell, external startup-profile reload and cancellation of unsaved-edit discard. Layout bounds confirm author links fit inside the client area; no foreground window is opened by these checks.
+
 Version 3.2.0 passed 45 synthetic automated tests. The frozen executable was also checked for generic/local profile startup, persistence across launches, damaged-setting fallback and explicit CLI profile cleanup. Public source and embedded Python code were checked for private profile terms before release.
 
 Version 3.1.0 passed 31 synthetic automated tests and 11 additional cleanup cases through the frozen Windows executable. The hidden GUI startup check confirmed the release version, author metadata and public source link. These checks use generated samples and do not establish full coverage of every document layout.
