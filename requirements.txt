@@ -1,0 +1,7 @@
+lxml==5.3.1
+pikepdf==9.5.2
+pdfminer.six==20251230
+pypdfium2==5.6.0
+Pillow==11.3.0
+olefile==0.47
+pywin32==311; sys_platform == 'win32'

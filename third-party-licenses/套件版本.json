@@ -1,0 +1,16 @@
+{
+  "lxml": "5.3.1",
+  "pikepdf": "9.5.2",
+  "pdfminer.six": "20251230",
+  "pypdfium2": "5.6.0",
+  "olefile": "0.47",
+  "pywin32": "311",
+  "cryptography": "44.0.2",
+  "Pillow": "11.3.0",
+  "charset-normalizer": "3.3.2",
+  "packaging": "23.2",
+  "Deprecated": "1.2.18",
+  "wrapt": "1.17.2",
+  "cffi": "1.17.1",
+  "pycparser": "2.22"
+}
