@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 
 APP_NAME = '文件去敏感化與範本清理工具'
-VERSION = '3.1.0'
+VERSION = '3.2.0'
 AUTHOR = 'Arthur Tao'
 LICENSE_NAME = 'MIT'
 BLOG_URL = 'https://taoyutsun.blogspot.com/'

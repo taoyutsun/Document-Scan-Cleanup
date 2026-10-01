@@ -28,6 +28,31 @@ This utility combines **scan → review and select → clean a copy → verify t
 
 The GUI currently uses Traditional Chinese. The executable is unsigned; Windows may show a SmartScreen prompt. Execution is subject to your device's software settings.
 
+## Personal keyword profiles (since 3.2.0)
+
+Keep general built-in examples or save your own working lists. **Personal profiles are stored in your user settings directory, outside the EXE, GitHub source and release ZIP.** Replacing the executable does not remove them.
+
+1. Enter semicolon-separated terms, click **儲存清單** (Save list), and name the profile. Saving updates the currently loaded local profile; starting from generic defaults creates a new profile.
+2. Click **設為啟動預設** (Set startup default) to load it on future GUI launches. Unsaved edits must be named and saved first.
+3. Switch saved lists in the dropdown. **載入清單** (Load list) imports a UTF-8 JSON file into local settings without modifying the original.
+4. **恢復通用預設** (Restore generic defaults) resets both the current terms and future GUI startup. Saved personal profiles remain available.
+
+On Windows, lists live in `%APPDATA%\DocumentScanCleanup\profiles\`; `keyword-settings.json` in the parent folder records the startup selection. Separate identifiers prevent name collisions. Edits are not saved automatically. Invalid startup settings/profile files trigger a visible fallback to generic defaults without overwriting the damaged files.
+
+Import example, using fictional terms only:
+
+```json
+{
+  "schema_version": 1,
+  "name": "Example working list",
+  "keywords": ["Draft", "Internal Use Only", "Project Cedar", "Example term"]
+}
+```
+
+Lists accept 1–100 nonempty terms, each up to 150 characters; individual terms cannot contain semicolons or line breaks. Keep personal lists and generated reports private; do not include them in public documentation, screenshots or issue reports.
+
+**CLI selection is explicit:** without keyword options, it uses generic defaults and ignores the GUI startup profile. Use `--keywords-profile .\my-list.json` or `--keywords`, exclusively. With `--gui`, an explicit list applies to that launch only and does not change the saved startup default.
+
 ## Supported formats
 
 | Format | Scan scope | Cleanup scope / requirements |

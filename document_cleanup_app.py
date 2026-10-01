@@ -8,10 +8,16 @@ from datetime import datetime
 from pathlib import Path
 import document_cleanup_core as core
 import app_metadata as meta
+import keyword_profiles as profiles
 
-def gui(initial=(),smoke_test=False):
+def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_callback=None):
     import tkinter as tk
-    from tkinter import ttk,filedialog,messagebox
+    from tkinter import ttk,filedialog,messagebox,simpledialog
+    store=profile_store if profile_store is not None else profiles.ProfileStore()
+    active_id,active_profile,startup_warning=store.startup()
+    if initial_words is not None:
+        _,initial_words=core.pattern(initial_words)
+        active_id=None;active_profile={'name':'自訂（未儲存）','keywords':initial_words}
     root=tk.Tk()
     if smoke_test:root.withdraw()
     root.title(meta.APP_NAME+' '+core.VERSION)
@@ -21,10 +27,16 @@ def gui(initial=(),smoke_test=False):
     title=ttk.Label(root,text='交付文件前，檢查並整理指定內容與範本殘留',font=('Microsoft JhengHei',16))
     title.pack(anchor='w',padx=16,pady=(14,5))
     ttk.Label(root,text='原檔保留。舊 Office／RTF 需桌面版 Office 轉檔；PDF 刪除整個文字物件；郵件附件保留。').pack(anchor='w',padx=16)
-    keywords=tk.StringVar(value='; '.join(core.DEFAULT_WORDS))
+    keywords=tk.StringVar(value='; '.join(active_profile['keywords']))
     entryrow=ttk.Frame(root);entryrow.pack(fill='x',padx=16,pady=10)
     ttk.Label(entryrow,text='關鍵字（分號分隔）：').pack(side='left')
     keyentry=ttk.Entry(entryrow,textvariable=keywords);keyentry.pack(side='left',fill='x',expand=True)
+    profile_row=ttk.Frame(root);profile_row.pack(fill='x',padx=16,pady=(0,8))
+    ttk.Label(profile_row,text='關鍵字清單：').pack(side='left')
+    profile_combo=ttk.Combobox(profile_row,state='readonly',width=25);profile_combo.pack(side='left',padx=(0,8))
+    profile_buttons=[];profile_choices=[]
+    profile_note=tk.StringVar(value=startup_warning)
+    ttk.Label(root,textvariable=profile_note,wraplength=1080).pack(anchor='w',padx=16,pady=(0,5))
     toolbar=ttk.Frame(root);toolbar.pack(fill='x',padx=16,pady=(0,8))
     all_buttons=[]
     files=ttk.Treeview(root,columns=('format','status'),show='tree headings',height=4)
@@ -58,8 +70,76 @@ def gui(initial=(),smoke_test=False):
     source.bind('<Button-1>',lambda event:webbrowser.open(meta.SOURCE_REPO_URL) if meta.SOURCE_REPO_URL else os.startfile(str(meta.SOURCE_DIRECTORY)))
 
     def keylist():return [w.strip() for w in keywords.get().split(';') if w.strip()]
+    def refresh_profiles():
+        nonlocal profile_choices
+        entries,skipped=store.list_profiles()
+        profile_choices=[(None,{'name':'通用預設','keywords':list(core.DEFAULT_WORDS)}),*entries]
+        profile_combo.configure(values=['通用預設']+[f"{p['name']} [{identifier[:6]}]" for identifier,p in entries])
+        index=next((i for i,(identifier,p) in enumerate(profile_choices) if identifier==active_id and p['keywords']==active_profile['keywords']),None)
+        if index is None:profile_combo.set('自訂（未儲存）')
+        else:profile_combo.current(index)
+        return skipped
+
+    def profile_description():
+        dirty=keylist()!=active_profile['keywords']
+        profile_note.set(f"目前：{active_profile['name']}"+('（已修改，尚未儲存）' if dirty else '')+'；清單僅存於本機，修改不會自動儲存。')
+
+    def apply_profile(identifier,profile):
+        nonlocal active_id,active_profile
+        active_id=identifier;active_profile=profile
+        keywords.set('; '.join(profile['keywords']))
+        refresh_profiles();profile_description()
+
+    def choose_profile(event=None):
+        if busy:return
+        index=profile_combo.current()
+        if index<0:return
+        identifier,profile=profile_choices[index]
+        try:
+            if identifier is not None:profile=store.load(identifier)
+            apply_profile(identifier,profile)
+        except Exception as exc:messagebox.showerror('載入關鍵字清單',str(exc))
+
+    def import_profile():
+        path=filedialog.askopenfilename(title='載入關鍵字清單（會複製至本機設定）',initialdir=str(store.profiles),filetypes=[('關鍵字 JSON','*.json')])
+        if not path:return
+        try:
+            identifier,profile=store.import_profile(path);apply_profile(identifier,profile)
+        except Exception as exc:messagebox.showerror('載入關鍵字清單',str(exc))
+
+    def save_profile():
+        try:
+            _,words=core.pattern(keylist())
+            name=simpledialog.askstring('儲存關鍵字清單','清單名稱（保存在本機個人設定資料夾）：',initialvalue=active_profile['name'] if active_id else '我的清單',parent=root)
+            if name is None:return False
+            identifier,profile=store.save(name,words,active_id);apply_profile(identifier,profile)
+            return True
+        except Exception as exc:
+            messagebox.showerror('儲存關鍵字清單',str(exc));return False
+
+    def set_startup():
+        try:
+            _,words=core.pattern(keylist())
+            if words!=active_profile['keywords'] or (active_id is None and words!=core.DEFAULT_WORDS):
+                if not save_profile():return
+            store.set_startup(active_id)
+            profile_note.set(f"啟動預設已設為：{active_profile['name']}。更新程式後也會保留。")
+        except Exception as exc:messagebox.showerror('啟動預設',str(exc))
+
+    def restore_generic():
+        try:
+            store.set_startup(None)
+            apply_profile(None,{'name':'通用預設','keywords':list(core.DEFAULT_WORDS)})
+            profile_note.set('已恢復通用啟動預設；個人清單保留，可從下拉選單重新載入。')
+        except Exception as exc:messagebox.showerror('恢復通用預設',str(exc))
+
+    for label,fn in [('載入清單',import_profile),('儲存清單',save_profile),('設為啟動預設',set_startup),('恢復通用預設',restore_generic)]:
+        b=ttk.Button(profile_row,text=label,command=fn);b.pack(side='left',padx=(0,7));profile_buttons.append(b)
+    profile_combo.bind('<<ComboboxSelected>>',choose_profile)
     def update_controls():
         for b in all_buttons:b.configure(state='disabled' if busy else 'normal')
+        for b in profile_buttons:b.configure(state='disabled' if busy else 'normal')
+        profile_combo.configure(state='disabled' if busy else 'readonly')
         if not busy:
             save_btn.configure(state='normal' if reports or errors else 'disabled')
             can_clean=bool(selection) or (prune.get() and any(r['format']=='pptx' and r['can_clean'] for r in reports.values()))
@@ -87,6 +167,7 @@ def gui(initial=(),smoke_test=False):
         paths.clear();files.delete(*files.get_children());clear_results();log.delete('1.0','end')
 
     def invalidate(*unused):
+        profile_description()
         if not busy and reports:
             clear_results();status.set('關鍵字已變更，請重新掃描。')
 
@@ -230,11 +311,20 @@ def gui(initial=(),smoke_test=False):
     for i,p in enumerate(paths):files.insert('','end',iid=str(i),text=p,values=(Path(p).suffix,'待掃描'))
     keywords.trace_add('write',invalidate);prune.trace_add('write',lambda *args:update_controls())
     root.protocol('WM_DELETE_WINDOW',close);update_controls()
+    skipped=refresh_profiles()
+    if startup_warning:profile_note.set(startup_warning)
+    elif skipped:profile_note.set(f'略過 {skipped} 份無效清單；有效清單可從下拉選單載入。')
+    else:profile_description()
     if smoke_test:
+        if smoke_callback:smoke_callback({'keywords':keywords,'save':save_profile,'startup':set_startup,'restore':restore_generic,'import':import_profile,'combo':profile_combo,'choose':choose_profile})
         root.update_idletasks()
         result={'version':core.VERSION,'title':root.title(),'buttons':[b.cget('text') for b in all_buttons],
                 'files':len(files.get_children()),'clean_disabled_initially':str(clean_btn.cget('state'))=='disabled',
-                'author':meta.AUTHOR,'license':meta.LICENSE_NAME,'source_link':'public' if meta.SOURCE_REPO_URL else 'local'}
+                'author':meta.AUTHOR,'license':meta.LICENSE_NAME,'source_link':'public' if meta.SOURCE_REPO_URL else 'local',
+                'profile_buttons':[b.cget('text') for b in profile_buttons],'keyword_count':len(keylist()),
+                'keyword_sha256':core.digest(json.dumps(keylist(),ensure_ascii=False).encode('utf-8')),
+                'keyword_source':'local_profile' if active_id else 'generic' if keylist()==core.DEFAULT_WORDS else 'custom',
+                'startup_warning':startup_warning}
         root.destroy();return result
     poll();root.mainloop()
 
@@ -245,17 +335,23 @@ def main():
     ap=argparse.ArgumentParser(description='指定內容去敏感化與多格式文件範本清理工具')
     ap.add_argument('files',nargs='*');m=ap.add_mutually_exclusive_group()
     m.add_argument('--scan',action='store_true');m.add_argument('--clean',action='store_true')
-    ap.add_argument('--output-dir',type=Path);ap.add_argument('--keywords',help='分號分隔的關鍵字')
+    ap.add_argument('--output-dir',type=Path)
+    kg=ap.add_mutually_exclusive_group()
+    kg.add_argument('--keywords',help='分號分隔的關鍵字')
+    kg.add_argument('--keywords-profile',type=Path,help='載入指定的 UTF-8 JSON 關鍵字清單；CLI 不自動套用 GUI 啟動預設')
     ap.add_argument('--mode',choices=['keyword','block'],default='keyword')
     ap.add_argument('--prune',action='store_true',help='同時清理 PPT 未使用範本')
     ap.add_argument('--selection-json',type=Path,help='JSON：來源完整路徑對應要清理的結果 ID 陣列')
     ap.add_argument('--gui',action='store_true');ap.add_argument('--check-gui',type=Path,help=argparse.SUPPRESS)
     args=ap.parse_args()
+    try:
+        words=profiles.load_profile(args.keywords_profile)['keywords'] if args.keywords_profile else [w.strip() for w in args.keywords.split(';') if w.strip()] if args.keywords is not None else None
+        if words is not None:_,words=core.pattern(words)
+    except Exception as exc:ap.error(str(exc))
     if args.check_gui:
-        args.check_gui.write_text(json.dumps(gui(args.files,True),ensure_ascii=False,indent=2),encoding='utf-8');return 0
-    if args.gui or not(args.scan or args.clean):gui(args.files);return 0
+        args.check_gui.write_text(json.dumps(gui(args.files,True,initial_words=words),ensure_ascii=False,indent=2),encoding='utf-8');return 0
+    if args.gui or not(args.scan or args.clean):gui(args.files,initial_words=words);return 0
     if not args.files or(args.clean and not args.output_dir):ap.error('請指定檔案；--clean 必須指定 --output-dir。')
-    words=[w.strip() for w in args.keywords.split(';') if w.strip()] if args.keywords else None
     selections=json.loads(args.selection_json.read_text(encoding='utf-8-sig')) if args.selection_json else None
     failed=0;failures=[]
     for i,p in enumerate(args.files,1):

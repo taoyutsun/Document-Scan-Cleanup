@@ -5,7 +5,7 @@ from zipfile import ZipFile
 
 ROOT=Path(__file__).resolve().parents[1]
 TOP={'app_metadata.py','document_scan_cleanup.py','document_cleanup_app.py','document_cleanup_core.py',
-     'document_extra_formats.py','document_legacy.py','pdf_text_cleanup.py','ppt_structure.py',
+     'document_extra_formats.py','document_legacy.py','pdf_text_cleanup.py','ppt_structure.py','keyword_profiles.py',
      'README.md','README.en.md','LICENSE','CHANGELOG.md','SECURITY.md','THIRD_PARTY_NOTICES.md',
      'requirements.txt','requirements-dev.txt','.gitignore','.gitattributes'}
 FOLDERS={'tests','scripts','docs','third-party-licenses','.github'}
@@ -13,10 +13,13 @@ FOLDERS={'tests','scripts','docs','third-party-licenses','.github'}
 # Organization-specific markers belong in a maintainer's private audit, not this repository.
 FORBIDDEN=re.compile(r'[A-Za-z]:[\\/]Users[\\/][^\\/\s<>]+',re.I)
 
+def private_settings(path):
+    return path.name.endswith('.keywords.json') or path.name=='keyword-settings.json' or 'profiles' in path.parts
+
 def public_files():
     paths=[ROOT/n for n in sorted(TOP) if (ROOT/n).is_file()]
     for folder in sorted(FOLDERS):
-        paths += [p for p in (ROOT/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix!='.pyc']
+        paths += [p for p in (ROOT/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix!='.pyc' and not private_settings(p.relative_to(ROOT))]
     return sorted(paths,key=lambda p:p.relative_to(ROOT).as_posix())
 
 def scan_text(data,location):
@@ -64,6 +67,7 @@ def audit_zip(path):
     with ZipFile(path) as z:
         if z.testzip() is not None:raise ValueError('Invalid ZIP integrity.')
         for name in z.namelist():
+            if private_settings(Path(name)):raise ValueError('User-local keyword settings in archive: '+name)
             if any(part in {'backups','work','outputs','__pycache__','.git'} for part in Path(name).parts):raise ValueError('Private/generated folder in archive: '+name)
             if name.endswith('.exe'):continue
             scan_text(z.read(name),name)

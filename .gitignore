@@ -31,5 +31,8 @@ Document_Scan_*/
 *.tsv
 .env
 .env.*
+profiles/
+*.keywords.json
+keyword-settings.json
 Thumbs.db
 .DS_Store

@@ -2,6 +2,16 @@
 
 [繁體中文說明](README.md) · [English README](README.en.md)
 
+## 3.2.0 — 2026-10-01
+
+- 新增本機關鍵字清單：載入、儲存、切換、設為 GUI 啟動預設及恢復通用預設。
+- 設定保存在使用者資料夾，更新 EXE 後保留；公開原始碼與發布套件不包含個人清單。
+- 新增 `--keywords-profile`；CLI 不自動套用 GUI 個人啟動設定。
+- 清單與設定驗證、原子儲存及損壞時的通用預設提示。
+- 公開示例與測試只使用通用或虛構字詞。
+
+Local keyword profiles with import/save/switch/startup/reset actions; user settings survive executable updates. Explicit CLI profile selection, atomic writes and validation/fallback. Personal profiles are excluded from public source and release packages; examples use general or fictional terms only.
+
 ## 3.1.0 — 2026-10-01
 
 首個 GitHub 公開版本，以交付文件前的指定內容去敏感化與範本整理為主題。

@@ -24,10 +24,14 @@ Tests create their own synthetic Office, PDF, email and text documents in tempor
 - PDF whole text-show block removal, retained text positioning and page geometry, metadata, split strings, signatures and encryption.
 - Text BOM, encoding, byte order, line endings and CSV row structure.
 - Generic custom keywords, centralized author metadata and hidden GUI startup.
+- Local profile reload/update/import, UTF-8 and validation limits, damaged/missing startup profiles, identifier traversal rejection and atomic write failure preservation.
+- Hidden GUI save/startup/reset/import actions, explicit CLI profile selection and exclusion of private settings from public allowlists/archives.
 
 GitHub Actions runs the synthetic suite, the public-file audit and a Windows build. It does not require or automate desktop Office.
 
 ## Portable executable checks
+
+Version 3.2.0 passed 45 synthetic automated tests. The frozen executable was also checked for generic/local profile startup, persistence across launches, damaged-setting fallback and explicit CLI profile cleanup. Public source and embedded Python code were checked for private profile terms before release.
 
 Version 3.1.0 passed 31 synthetic automated tests and 11 additional cleanup cases through the frozen Windows executable. The hidden GUI startup check confirmed the release version, author metadata and public source link. These checks use generated samples and do not establish full coverage of every document layout.
 
