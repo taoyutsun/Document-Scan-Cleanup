@@ -4,7 +4,7 @@
 
 [繁體中文](README.md) | **English**
 
-[Download v3.3.1 (Windows x64 ZIP)](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.3.1/Document-Scan-Cleanup-v3.3.1-windows-x64.zip) · [Release notes](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.3.1)
+[Download v3.5.3 (Windows x64 ZIP)](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.5.3/Document-Scan-Cleanup-v3.5.3-windows-x64.zip) · [Release notes](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.5.3)
 
 Before sharing documents with customers, suppliers or partners, scan for text you specify, review the matches, remove selected content and save a separate copy. Supports PowerPoint, Word, Excel, PDF, email and common text formats while preserving existing document structure where supported.
 
@@ -21,7 +21,7 @@ This utility combines **scan → review and select → clean a copy → verify t
 ## Download and start
 
 1. Download the Windows x64 portable ZIP from [Releases](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/latest).
-2. Extract the entire archive and run `DocumentScanCleanup.exe`. The portable app runs without Python installed. See the PowerPoint section below for operations that require Office.
+2. Extract the entire archive and run `DocumentScanCleanup.exe`. The portable app runs without Python installed. See the Office batch section below for operations that require desktop Office.
 3. Add documents with the file selection button.
 4. Enter semicolon-separated text, for example `Draft; Internal Use Only; Project code; client@example.invalid`. Replace these fictional examples with your own terms.
 5. Scan, double-click a result to inspect its content, then adjust the checkboxes.
@@ -30,11 +30,23 @@ This utility combines **scan → review and select → clean a copy → verify t
 
 The GUI currently uses Traditional Chinese. The executable is unsigned; Windows may show a SmartScreen prompt. Execution is subject to your device's software settings.
 
-## PowerPoint batch tools
+## Office batch tools
 
-Both tabs share a file list. Add files with the picker or drag them in from Explorer. In the PowerPoint tab, select speaker notes, hidden slides, or comments to remove. To merge, arrange the files using Move Up, Move Down, or Sort by Filename and select the merge option.
+Both tabs share a file list. Add or drag in a mix of PowerPoint, Word and Excel files, select operations by format in the Office batch tab, then run the batch once. Each format selected for merging produces its own merged presentation, document or workbook.
 
-To include keyword cleanup in the same run, scan the files first and review the checked findings. Select the option to apply checked keyword findings in the PowerPoint tab, then run the batch. The tool applies the selected text changes first and saves separate output files and a batch report.
+In both tabs, drag the divider below the file list up or down to adjust its height.
+
+In the Office batch tab, drag a file row and release it where the insertion line appears. Merges follow the resulting list order. Move Up, Move Down, and Sort by Filename remain available.
+
+- **PowerPoint** can remove speaker notes, hidden slides or comments and merge presentations in list order.
+- **Word** can remove comments, accept all revisions and turn off tracking, or merge documents into one DOCX with separate sections. Accepting revisions and merging require Windows desktop Word. Review the result if the sources define the same named styles differently.
+- **Excel** can remove threaded comments and legacy notes separately. Merging appends each workbook's sheets as a group, preserves hidden states and adds a numbered suffix to duplicate sheet names. Preview Hidden Worksheets lists hidden and very hidden sheets. Merging requires Windows desktop Excel. The tool stops the Excel merge when it detects external data connections, PivotTables or conflicting workbook-scoped names.
+
+Merge is selected per format and requires at least two files of that type. The per-format and all-Office cleanup buttons toggle cleanup options. Merging and applying checked keyword matches have separate controls.
+
+Word custom XML is verified by its data store ID, so Word can renumber its package parts during saving. A Word merge retains verified custom XML from each input and stops if store IDs conflict or content-control bindings cannot be verified.
+
+To include keyword cleanup in the same run, scan the files first and review the checked findings. Select the option to apply checked keyword findings in the batch tab. The tool applies selected text changes before format-specific operations. Legacy `.doc`, `.rtf` and `.xls` files require the corresponding desktop Office application and save as DOCX or XLSX.
 
 Standard PPTX notes and comments can be removed directly. Removing hidden slides, merging, or converting legacy `.ppt`/`.pps` files requires Windows desktop PowerPoint. Close PowerPoint before those operations and use matching slide dimensions for a merge. Review the saved copy before sharing.
 
@@ -101,7 +113,7 @@ Names/properties, Excel headers/footers and email subjects use keyword removal o
 
 ## Outputs and originals
 
-Keyword cleanup creates a `Document_Cleanup_timestamp` folder with numbered per-file subfolders containing cleaned copies and TXT/JSON change reports. The PowerPoint tools save individual copies or one `合併簡報.pptx` (merged presentation) in a `PowerPoint_Batch_timestamp` folder. Both workflows write `batch.report.json`. Scan-only reports can be saved separately.
+Keyword cleanup creates a `Document_Cleanup_timestamp` folder with numbered per-file subfolders containing cleaned copies and TXT/JSON change reports. The Office batch writes individual copies and optional merged PPTX, DOCX or XLSX files under one `Office_Batch_timestamp` folder. Both workflows write `batch.report.json`. Scan-only reports can be saved separately.
 
 If the source changes after scanning, scan again. Existing outputs are never overwritten. A match can appear in multiple storage locations or references, so match counts do not represent unique pieces of sensitive information.
 

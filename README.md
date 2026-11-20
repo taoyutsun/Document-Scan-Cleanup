@@ -4,7 +4,7 @@
 
 **繁體中文** | [English](README.en.md)
 
-[下載 v3.3.1（Windows x64 ZIP）](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.3.1/Document-Scan-Cleanup-v3.3.1-windows-x64.zip) · [版本說明](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.3.1)
+[下載 v3.5.3（Windows x64 ZIP）](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.5.3/Document-Scan-Cleanup-v3.5.3-windows-x64.zip) · [版本說明](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.5.3)
 
 交付文件給客戶、供應商或合作夥伴前，依自己指定的關鍵字檢查內容、選擇要移除的項目，再另存整理好的副本。工具支援 PowerPoint、Word、Excel、PDF、郵件與常見文字格式，盡量保留原有格式與版面。
 
@@ -30,11 +30,23 @@
 
 GUI 使用繁體中文。EXE 尚未做程式碼簽署，Windows 可能顯示 SmartScreen 提示；是否允許執行仍依裝置的軟體管理設定。
 
-## PowerPoint 批次處理
+## Office 批次處理
 
-兩個分頁共用同一份檔案清單。可用「加入檔案」或從檔案總管拖入一份或多份檔案。在「PowerPoint 批次處理」勾選刪除備忘稿、隱藏投影片或註解。也可將數份簡報按清單順序合併，用「上移」「下移」或「依檔名排序」調整順序。
+兩個分頁共用同一份檔案清單。可同時加入或拖曳 PowerPoint、Word 和 Excel，在「Office 批次處理」勾選各格式的項目，按一次「執行並另存」。勾選合併時，工具會依格式分別輸出合併簡報、文件或活頁簿。
 
-同一批也可以清理關鍵字。先在「關鍵字掃描」完成掃描、確認命中並調整勾選。回到 PowerPoint 分頁，勾選「套用已勾選的關鍵字項目」，再按「執行並另存」。工具先處理勾選的文字，再執行選定的簡報處理。每次另存並產生批次報告。
+在「關鍵字掃描」和「Office 批次處理」分頁都可上下拖曳檔案清單下方的分隔線，依檔案數量調整清單高度。
+
+在「Office 批次處理」的清單中，按住檔案列上下拖曳，看到插入線後放開即可調整合併順序。也可使用「上移」「下移」或「依檔名排序」。
+
+- **PowerPoint** 可刪除備忘稿、隱藏投影片或註解，也可依清單順序合併。
+- **Word** 可刪除註解、接受全部修訂並停止追蹤，或以分節依序合併成一份 DOCX。接受修訂與合併需要 Windows 桌面版 Word。若來源同名樣式的設定不同，請檢查合併副本的版面。
+- **Excel** 可分別刪除串列註解和傳統附註。合併會將各活頁簿的工作表整組依序帶入一份 XLSX，保留工作表的隱藏狀態，同名工作表加上編號。按「預覽隱藏工作表」可檢查這些分頁。合併需要 Windows 桌面版 Excel，檔案有外部資料連線、樞紐分析或同名的全簿名稱時會停止該組合併。
+
+每種格式可分別勾選合併，合併至少需要兩份同類檔案。各列的「全選清理」和「全選 Office 清理」只切換清理項目，合併與套用關鍵字的勾選各自控制。
+
+Word 的自訂 XML 會依資料識別碼核對，允許 Word 另存時重新編號。合併會保留可驗證的來源自訂 XML；識別碼相同但資料不同，或無法確認與內容控制項的關聯時，工具會停止該組輸出。
+
+同一批也可以清理關鍵字。先在「關鍵字掃描」檢視並勾選命中項目，再勾選批次分頁的「套用已勾選的關鍵字項目」。工具先處理選取的文字，再執行各格式的其他操作。舊 `.doc`、`.rtf` 與 `.xls` 需裝對應桌面版 Office，將輸出為 DOCX 或 XLSX。
 
 一般 PPTX 的備忘稿和註解可直接清理。刪除隱藏投影片、合併及舊 `.ppt`／`.pps` 轉換需要 Windows 桌面版 PowerPoint，執行前請關閉 PowerPoint。合併需相同投影片尺寸。建議在分享前用 PowerPoint 開啟副本，確認版面及內容符合需求。
 
@@ -102,7 +114,7 @@ Excel 頁首頁尾、郵件標題及名稱／屬性只移除指定字樣；CSV�
 
 ## 結果與原檔保留
 
-關鍵字清理會建立 `Document_Cleanup_日期時間` 資料夾，每份文件各有一個編號子資料夾，內含清理副本與 TXT／JSON 變更報告。PowerPoint 批次工具會建立 `PowerPoint_Batch_日期時間` 資料夾，依設定另存各份簡報或一份 `合併簡報.pptx`。兩種流程均附 `batch.report.json`。只需檢查時，可選「儲存掃描報告」。
+關鍵字清理會建立 `Document_Cleanup_日期時間` 資料夾，每份文件各有一個編號子資料夾，內含清理副本與 TXT／JSON 變更報告。Office 批次工具會把副本集中在 `Office_Batch_日期時間` 資料夾，按設定另存個別文件，或產生 `合併簡報.pptx`、`合併文件.docx`、`合併活頁簿.xlsx`。兩種流程均附 `batch.report.json`。只需檢查時，可選「儲存掃描報告」。
 
 來源文件在掃描後被編輯時，工具會要求重新掃描；輸出已存在時停止，不覆寫已有結果。不同儲存位置或引用可能重複命中，數量不等於不同敏感內容的數量。
 

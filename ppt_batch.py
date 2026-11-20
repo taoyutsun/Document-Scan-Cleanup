@@ -251,7 +251,7 @@ def active_labels(data):
 
 def check_native_input(data):
     for name, payload in data.items():
-        if name.lower().startswith('ppt/activex/'):
+        if name.lower().startswith(('ppt/activex/', 'word/activex/', 'xl/activex/')):
             raise ValueError('簡報含 ActiveX 元件，無法使用 PowerPoint 自動處理。')
         if name.endswith('.rels'):
             for rel in opc.parse(payload):

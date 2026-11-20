@@ -20,6 +20,8 @@ Tests create their own synthetic Office, PDF, email and text documents in tempor
 - Word/PPT split formatting runs, style references, images, field instructions, sensitivity-label preservation, protection and signatures.
 - PowerPoint unused structure pruning, including active, unselected theme preservation.
 - PowerPoint batch checks for classic and modern comments, checked keyword selections, stale input, removed and active sensitivity label records, conflicting labels and label loss during saving.
+- Mixed Office routing checks that merge operations receive only files of the matching format. Word comment removal retains unselected revisions, and Excel note removal preserves worksheet content and unrelated drawing shapes.
+- Word custom XML verification covers part renumbering, restoring stores and relationships from a second input, and rejecting conflicting store IDs.
 - Excel shared strings, hidden cells, unselected cells and formula/protection preservation.
 - Email plain/HTML content, nested formatting, attachment payloads, address fields and signature rejection.
 - PDF whole text-show block removal, retained text positioning and page geometry, metadata, split strings, signatures and encryption.
@@ -31,6 +33,8 @@ Tests create their own synthetic Office, PDF, email and text documents in tempor
 GitHub Actions runs the synthetic suite, the public-file audit and a Windows build. It does not require or automate desktop Office.
 
 ## Portable executable checks
+
+Version 3.5.3 passed 61 automated tests. Local Windows validation also checked the frozen executable and reopened and saved a merged document in desktop Word to confirm that the input custom XML stores survived the round trip.
 
 Version 3.3.1 passed 53 synthetic tests. Local validation also checked the frozen GUI and the PowerPoint worker, including ordered merging, optional slide and notes removal, and retention of active label metadata. Desktop PowerPoint integration is separate from the synthetic CI suite.
 

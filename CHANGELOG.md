@@ -2,6 +2,40 @@
 
 [繁體中文說明](README.md) · [English README](README.en.md)
 
+## 3.5.3 — 2026-11-20
+
+- 本次公開版納入 3.4.0 至 3.5.2 的 Word／Excel 批次清理及合併、可調整的檔案清單窗格和拖曳排序。
+- 修正 Word 接受修訂時因自訂 XML 零件重新編號而被誤擋的問題。Word 合併後會核對兩份以上來源的自訂 XML 資料、屬性與關聯。
+
+This public release includes the Word and Excel batch cleanup and merge features, resizable file lists and drag-to-reorder from 3.4.0 through 3.5.2. It fixes a false positive when Word renumbers custom XML parts while accepting revisions. Word merges verify the custom XML data, properties and relationships from all input files.
+
+## 3.5.2（本機測試版 / Local test build）
+
+- Office 批次清單支援直接拖曳排序，合併依更新後的清單順序處理。
+
+Adds drag-to-reorder in the Office batch list. Merges use the resulting list order.
+
+## 3.5.1（本機測試版 / Local test build）
+
+- 關鍵字掃描的檔案清單預設加高。關鍵字掃描與 Office 批次處理都可拖曳清單下方的分隔線調整高度。
+
+Increases the default height of the keyword scan file list and adds a draggable split between the file list and lower panel in both tabs.
+
+## 3.5.0（本機測試版 / Local test build）
+
+- Word 新增依序分節合併。Excel 新增依序合併工作表群組。同名工作表加上編號。
+- 新增各格式與跨格式的清理全選／清除。各格式的合併及關鍵字操作仍可獨立選擇。
+
+Adds ordered Word document and Excel worksheet merges. Adds per-format and all-Office controls for selecting or clearing cleanup options.
+
+## 3.4.0（本機測試版 / Local test build）
+
+- Office 批次處理支援在同一批次中加入 PowerPoint、Word 和 Excel，並將副本集中另存。
+- Word 新增移除註解及接受全部修訂並停止追蹤。
+- Excel 新增分別移除串列註解和附註，並可預覽隱藏工作表。
+
+Adds mixed Office batches, Word comment removal and revision acceptance, and separate Excel threaded comment and note removal with a hidden sheet preview.
+
 ## 3.3.1 — 2026-11-20
 
 - 自 3.2.1 起的公開更新。包含 3.3.0 試用版新增的 PowerPoint 批次處理、檔案拖曳及共用清單。

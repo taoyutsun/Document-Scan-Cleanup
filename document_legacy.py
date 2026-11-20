@@ -35,11 +35,34 @@ def convert(raw, extension):
     if key in _cache:return _cache[key]
     if len(raw)>100*1024*1024:raise ValueError('舊格式自動轉檔上限 100 MB；較大檔案請先手動另存新版格式。')
     preflight(raw,extension)
+    output = run_office(raw, extension, CONVERT[extension])
+    if len(_cache)>=4 or sum(map(len,_cache.values()))+len(output)>200*1024*1024:_cache.clear()
+    _cache[key]=output
+    return output
+
+
+def finalize_word(raw):
+    return run_office(raw, '.docx', '.docx', accept_revisions=True)
+
+
+def merge_office(inputs, extension, *, sheet_names=()):
+    return run_office(inputs[0], extension, extension, append=inputs[1:], sheet_names=sheet_names)
+
+
+def run_office(raw, extension, output_extension, *, accept_revisions=False, append=(), sheet_names=()):
+    if sys.platform != 'win32':
+        raise ValueError('此操作需要 Windows 桌面版 Office。')
     with tempfile.TemporaryDirectory(prefix='document-convert-') as td:
-        folder=Path(td);source=folder/('source'+extension);target=folder/('converted'+CONVERT[extension])
+        folder=Path(td);source=folder/('source'+extension);target=folder/('converted'+output_extension)
         source.write_bytes(raw)
+        others = []
+        for index, payload in enumerate(append, 1):
+            path = folder/f'input-{index}{extension}'
+            path.write_bytes(payload)
+            others.append(str(path))
         request=folder/'request.json';response=folder/'response.json'
-        request.write_text(json.dumps({'source':str(source),'target':str(target),'response':str(response)}),encoding='utf-8')
+        request.write_text(json.dumps({'source':str(source),'target':str(target),'response':str(response),
+                                       'accept_revisions':accept_revisions,'append':others,'sheet_names':sheet_names}),encoding='utf-8')
         command=[sys.executable,'--convert-worker',str(request)] if getattr(sys,'frozen',False) else [sys.executable,str(Path(__file__).resolve()),'--convert-worker',str(request)]
         try:
             proc=subprocess.run(command,creationflags=subprocess.CREATE_NO_WINDOW,timeout=90,
@@ -53,13 +76,11 @@ def convert(raw, extension):
                     try:
                         handle=win32api.OpenProcess(1,False,state['owned_pid']);win32api.TerminateProcess(handle,1);handle.Close()
                     except Exception:pass
-            raise ValueError('Office 轉檔超過 90 秒，已停止。請先在 Office 手動另存新版格式。') from exc
+            raise ValueError('Office 處理超過 90 秒，已停止。') from exc
         state=json.loads(response.read_text(encoding='utf-8')) if response.exists() else {}
         if proc.returncode or not target.exists():raise ValueError(state.get('error','需要安裝對應的桌面版 Office；此檔無法自動轉換。'))
         output=target.read_bytes()
     if len(output)>600*1024*1024:raise ValueError('轉檔後超過大小限制。')
-    if len(_cache)>=4 or sum(map(len,_cache.values()))+len(output)>200*1024*1024:_cache.clear()
-    _cache[key]=output
     return output
 
 def worker(request):
@@ -68,7 +89,7 @@ def worker(request):
     app=None;doc=None;owned=False;pid=None;pythoncom.CoInitialize()
     try:
         ext=source.suffix.lower()
-        prog='Word.Application' if ext in {'.doc','.rtf'} else 'PowerPoint.Application' if ext in {'.ppt','.pps'} else 'Excel.Application'
+        prog='Word.Application' if ext in {'.doc','.rtf','.docx'} else 'PowerPoint.Application' if ext in {'.ppt','.pps'} else 'Excel.Application'
         image='WINWORD.EXE' if prog=='Word.Application' else 'POWERPNT.EXE' if prog=='PowerPoint.Application' else 'EXCEL.EXE'
         def process_ids():
             inventory=subprocess.run(['tasklist.exe','/FI','IMAGENAME eq '+image,'/FO','CSV','/NH'],capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW,timeout=10)
@@ -85,7 +106,13 @@ def worker(request):
             app.Visible=False;app.DisplayAlerts=0;app.Options.UpdateLinksAtOpen=False
             doc=app.Documents.OpenNoRepairDialog(str(source),ConfirmConversions=False,ReadOnly=True,AddToRecentFiles=False,
                 PasswordDocument='DocumentCleanup-No-Password',PasswordTemplate='DocumentCleanup-No-Password',Visible=False,OpenAndRepair=False)
-            if doc.HasVBProject or doc.ProtectionType!=-1:raise ValueError('文件含巨集或編輯保護，不轉檔。')
+            if doc.HasVBProject or doc.ProtectionType!=-1:raise ValueError('文件含巨集或編輯保護，未處理。')
+            if q.get('accept_revisions'):
+                doc.TrackRevisions = False
+                doc.AcceptAllRevisions()
+            if q.get('append'):
+                from office_merge import merge_word_documents
+                merge_word_documents(app, doc, q['append'])
             doc.SaveAs2(target,FileFormat=12,AddToRecentFiles=False)
         elif prog=='Excel.Application':
             app.Visible=False;app.DisplayAlerts=False;app.EnableEvents=False;app.AskToUpdateLinks=False
@@ -96,6 +123,9 @@ def worker(request):
             if doc.HasVBProject or doc.Excel4MacroSheets.Count or doc.ProtectStructure or any(s.ProtectContents for s in doc.Worksheets):
                 raise ValueError('活頁簿含巨集或保護，不轉檔。')
             if doc.Connections.Count:raise ValueError('活頁簿含外部資料連線，本版不轉檔。')
+            if q.get('append'):
+                from office_merge import merge_excel_workbooks
+                merge_excel_workbooks(app, doc, q['append'], q['sheet_names'])
             doc.SaveAs(target,FileFormat=51)
         else:
             app.DisplayAlerts=1
@@ -104,7 +134,7 @@ def worker(request):
             doc.SaveAs(target,24)
         response.write_text(json.dumps({'success':True,'owned_pid':pid}),encoding='utf-8');return 0
     except Exception as exc:
-        response.write_text(json.dumps({'error':'Office 轉檔失敗：'+str(exc),'owned_pid':pid if owned else None},ensure_ascii=False),encoding='utf-8');return 1
+        response.write_text(json.dumps({'error':'Office 處理失敗：'+str(exc),'owned_pid':pid if owned else None},ensure_ascii=False),encoding='utf-8');return 1
     finally:
         if doc is not None:
             try:doc.Close() if source.suffix.lower() in {'.ppt','.pps'} else doc.Close(False)
