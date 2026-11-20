@@ -19,6 +19,7 @@ Tests create their own synthetic Office, PDF, email and text documents in tempor
 - Selected and unselected content, invalid selections, changed source hashes and output collision handling.
 - Word/PPT split formatting runs, style references, images, field instructions, sensitivity-label preservation, protection and signatures.
 - PowerPoint unused structure pruning, including active, unselected theme preservation.
+- PowerPoint batch checks for classic and modern comments, checked keyword selections, stale input, removed and active sensitivity label records, conflicting labels and label loss during saving.
 - Excel shared strings, hidden cells, unselected cells and formula/protection preservation.
 - Email plain/HTML content, nested formatting, attachment payloads, address fields and signature rejection.
 - PDF whole text-show block removal, retained text positioning and page geometry, metadata, split strings, signatures and encryption.
@@ -30,6 +31,8 @@ Tests create their own synthetic Office, PDF, email and text documents in tempor
 GitHub Actions runs the synthetic suite, the public-file audit and a Windows build. It does not require or automate desktop Office.
 
 ## Portable executable checks
+
+Version 3.3.1 passed 53 synthetic tests. Local validation also checked the frozen GUI and the PowerPoint worker, including ordered merging, optional slide and notes removal, and retention of active label metadata. Desktop PowerPoint integration is separate from the synthetic CI suite.
 
 Version 3.2.1 passed 49 synthetic tests, including hidden layout checks for five window-size/font-scale combinations, profile-folder opening with a mocked shell, external startup-profile reload and cancellation of unsaved-edit discard. Layout bounds confirm author links fit inside the client area; no foreground window is opened by these checks.
 

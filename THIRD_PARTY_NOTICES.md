@@ -13,6 +13,8 @@ The project's own source is MIT-licensed. Dependencies retain their own licenses
 | Pillow | 11.3.0 | https://github.com/python-pillow/Pillow |
 | olefile | 0.47 | https://github.com/decalage2/olefile |
 | pywin32 | 311 | https://github.com/mhammond/pywin32 |
+| TkinterDnD2 | 0.4.3 | https://github.com/Eliav2/tkinterdnd2 |
+| tkdnd (Windows x64) | 2.9.4 | https://github.com/petasis/tkdnd |
 | PyInstaller (打包 / packaging) | 6.12.0 | https://github.com/pyinstaller/pyinstaller |
 
 pikepdf 及其打包相依元件的授權／來源資訊另見 `third-party-licenses/pikepdf/`；本專案沒有修改其程式碼。PDFium 與其他原生元件的授權檔一併隨附。相依版本清單見 `third-party-licenses/套件版本.json`。

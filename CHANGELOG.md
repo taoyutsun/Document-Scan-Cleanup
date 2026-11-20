@@ -2,6 +2,21 @@
 
 [繁體中文說明](README.md) · [English README](README.en.md)
 
+## 3.3.1 — 2026-11-20
+
+- 自 3.2.1 起的公開更新。包含 3.3.0 試用版新增的 PowerPoint 批次處理、檔案拖曳及共用清單。
+- 區分已移除的敏感度標籤紀錄、仍有效的標籤及 ActiveX。處理有相容標籤的簡報時保留原有分類，另存後驗證標籤狀態。
+
+The public update from 3.2.1 includes the PowerPoint batch tools, shared file list and drag-and-drop support introduced in the 3.3.0 test build. It distinguishes removed label records, active sensitivity labels and ActiveX. The batch checks that active label metadata survives saving before delivering the output.
+
+## 3.3.0 — 2026-11-20（本機測試版 / Local test build）
+
+- 新增 PowerPoint 批次處理，可選擇移除備忘稿、隱藏投影片或註解，並依清單順序合併。
+- 兩個分頁共用檔案清單及檔案拖曳功能，PowerPoint 批次也可套用已勾選的關鍵字項目。
+- 更新視窗樣式，保留作者與原始碼連結，批次輸出另存並附處理報告。
+
+Adds share-copy tools for PowerPoint notes, hidden slides, comments, and ordered merging. The two tabs share a drag-and-drop file list, and the PowerPoint batch can also apply checked keyword findings.
+
 ## 3.2.1 — 2026-10-01
 
 - 新增「重新載入啟動清單」「開啟清單資料夾」與已儲存清單數量，方便確認私人設定位置與載入狀態。

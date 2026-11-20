@@ -6,6 +6,7 @@ from zipfile import ZipFile
 ROOT=Path(__file__).resolve().parents[1]
 TOP={'app_metadata.py','document_scan_cleanup.py','document_cleanup_app.py','document_cleanup_core.py',
      'document_extra_formats.py','document_legacy.py','pdf_text_cleanup.py','ppt_structure.py','keyword_profiles.py',
+     'ppt_batch.py','ppt_batch_view.py',
      'README.md','README.en.md','LICENSE','CHANGELOG.md','SECURITY.md','THIRD_PARTY_NOTICES.md',
      'requirements.txt','requirements-dev.txt','.gitignore','.gitattributes'}
 FOLDERS={'tests','scripts','docs','third-party-licenses','.github'}

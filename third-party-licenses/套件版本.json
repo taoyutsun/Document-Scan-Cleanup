@@ -5,6 +5,8 @@
   "pypdfium2": "5.6.0",
   "olefile": "0.47",
   "pywin32": "311",
+  "tkinterdnd2": "0.4.3",
+  "tkdnd-windows-x64": "2.9.4",
   "cryptography": "44.0.2",
   "Pillow": "11.3.0",
   "charset-normalizer": "3.3.2",

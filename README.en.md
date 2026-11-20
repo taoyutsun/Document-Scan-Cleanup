@@ -4,6 +4,8 @@
 
 [繁體中文](README.md) | **English**
 
+[Download v3.3.1 (Windows x64 ZIP)](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.3.1/Document-Scan-Cleanup-v3.3.1-windows-x64.zip) · [Release notes](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.3.1)
+
 Before sharing documents with customers, suppliers or partners, scan for text you specify, review the matches, remove selected content and save a separate copy. Supports PowerPoint, Word, Excel, PDF, email and common text formats while preserving existing document structure where supported.
 
 ## Why this tool?
@@ -19,7 +21,7 @@ This utility combines **scan → review and select → clean a copy → verify t
 ## Download and start
 
 1. Download the Windows x64 portable ZIP from [Releases](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/latest).
-2. Extract the entire archive and run `DocumentScanCleanup.exe`. Modern formats do not require Python or Office.
+2. Extract the entire archive and run `DocumentScanCleanup.exe`. The portable app runs without Python installed. See the PowerPoint section below for operations that require Office.
 3. Add documents with the file selection button.
 4. Enter semicolon-separated text, for example `Draft; Internal Use Only; Project code; client@example.invalid`. Replace these fictional examples with your own terms.
 5. Scan, double-click a result to inspect its content, then adjust the checkboxes.
@@ -27,6 +29,16 @@ This utility combines **scan → review and select → clean a copy → verify t
 7. Open the output and check content, line wrapping and layout before sharing.
 
 The GUI currently uses Traditional Chinese. The executable is unsigned; Windows may show a SmartScreen prompt. Execution is subject to your device's software settings.
+
+## PowerPoint batch tools
+
+Both tabs share a file list. Add files with the picker or drag them in from Explorer. In the PowerPoint tab, select speaker notes, hidden slides, or comments to remove. To merge, arrange the files using Move Up, Move Down, or Sort by Filename and select the merge option.
+
+To include keyword cleanup in the same run, scan the files first and review the checked findings. Select the option to apply checked keyword findings in the PowerPoint tab, then run the batch. The tool applies the selected text changes first and saves separate output files and a batch report.
+
+Standard PPTX notes and comments can be removed directly. Removing hidden slides, merging, or converting legacy `.ppt`/`.pps` files requires Windows desktop PowerPoint. Close PowerPoint before those operations and use matching slide dimensions for a merge. Review the saved copy before sharing.
+
+**v3.3.1 fixes a false positive in sensitivity label detection.** Office may keep a record after a label is removed, and that record no longer blocks batch processing. When the labelled merge inputs have matching active label metadata, the tool uses a labelled presentation as the base and keeps the slide order shown in the list. It stops if active labels differ or if it cannot verify that the original active label metadata survived saving.
 
 ## Personal keyword profiles (since 3.2.0)
 
@@ -61,7 +73,7 @@ Lists accept 1–100 nonempty terms, each up to 150 characters; individual terms
 
 | Format | Scan scope | Cleanup scope / requirements |
 | --- | --- | --- |
-| PPTX | Slides, masters, layouts, notes, supported names and properties | Selected text/names; optional unused master/layout/theme pruning, preserving active formatting dependencies |
+| PPTX | Slides, masters, layouts, notes, supported names and properties | Selected text and names, plus optional unused template pruning. Batch tools remove notes, hidden slides or comments and merge presentations in order |
 | DOCX | Body, headers, footers, tables, text boxes, comments, revisions, styles and properties | Selected text and supported names, with synchronized style references |
 | XLSX | Visible/hidden text cells, headers/footers, traditional comments, some drawings and properties | Selected text; formulas, numbers and unselected cells are retained, including other shared-string references |
 | PDF | Parsable text-show blocks and ordinary metadata, with page numbers | **Removes an entire selected text-show block**, preserving other text positions, images and page geometry |
@@ -89,7 +101,7 @@ Names/properties, Excel headers/footers and email subjects use keyword removal o
 
 ## Outputs and originals
 
-The GUI creates a new `Document_Cleanup_timestamp` folder, with numbered per-file subfolders containing the cleaned copy, TXT/JSON change reports and remaining matches. A batch report is also written. Scan-only reports can be saved without cleaning.
+Keyword cleanup creates a `Document_Cleanup_timestamp` folder with numbered per-file subfolders containing cleaned copies and TXT/JSON change reports. The PowerPoint tools save individual copies or one `合併簡報.pptx` (merged presentation) in a `PowerPoint_Batch_timestamp` folder. Both workflows write `batch.report.json`. Scan-only reports can be saved separately.
 
 If the source changes after scanning, scan again. Existing outputs are never overwritten. A match can appear in multiple storage locations or references, so match counts do not represent unique pieces of sensitive information.
 

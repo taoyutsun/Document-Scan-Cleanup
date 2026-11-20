@@ -3,10 +3,12 @@ $ErrorActionPreference = 'Stop'
 $taskProjectDir = Split-Path -Parent $PSScriptRoot
 $taskBuildDir = Join-Path $taskProjectDir 'work\build'
 $taskDistDir = Join-Path $taskProjectDir 'dist'
+$taskTkDnDDir = & $Python -c "from pathlib import Path; import tkinterdnd2; print(Path(tkinterdnd2.__file__).parent / 'tkdnd' / 'win-x64')"
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $taskTkDnDDir -PathType Container)) { throw 'TkDnD for Windows x64 was not found.' }
 New-Item -ItemType Directory -Force -Path $taskBuildDir, $taskDistDir | Out-Null
 Push-Location -LiteralPath $taskProjectDir
 try {
-    & $Python -m PyInstaller --noconfirm --onefile --windowed --name DocumentScanCleanup --hidden-import win32timezone --collect-data pikepdf --paths $taskProjectDir --distpath $taskDistDir --workpath $taskBuildDir --specpath $taskBuildDir --exclude-module pandas --exclude-module numpy --exclude-module pyarrow --exclude-module scipy --exclude-module torch --exclude-module matplotlib --exclude-module cv2 --exclude-module IPython --exclude-module sklearn (Join-Path $taskProjectDir 'document_scan_cleanup.py')
+    & $Python -m PyInstaller --noconfirm --onefile --windowed --name DocumentScanCleanup --hidden-import win32timezone --collect-data pikepdf --add-data "${taskTkDnDDir}:tkinterdnd2/tkdnd/win-x64" --paths $taskProjectDir --distpath $taskDistDir --workpath $taskBuildDir --specpath $taskBuildDir --exclude-module pandas --exclude-module numpy --exclude-module pyarrow --exclude-module scipy --exclude-module torch --exclude-module matplotlib --exclude-module cv2 --exclude-module IPython --exclude-module sklearn (Join-Path $taskProjectDir 'document_scan_cleanup.py')
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 } finally { Pop-Location }
 & $Python (Join-Path $PSScriptRoot 'audit_public.py') --exe (Join-Path $taskDistDir 'DocumentScanCleanup.exe')

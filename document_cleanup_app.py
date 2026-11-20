@@ -9,16 +9,28 @@ from pathlib import Path
 import document_cleanup_core as core
 import app_metadata as meta
 import keyword_profiles as profiles
+import ppt_batch
 
 def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_callback=None,smoke_size=None,smoke_scale=None):
     import tkinter as tk
     from tkinter import ttk,filedialog,messagebox,simpledialog
+    import os
+    from ppt_batch_view import BatchView
+    from tkinterdnd2 import DND_FILES, TkinterDnD
     store=profile_store if profile_store is not None else profiles.ProfileStore()
     active_id,active_profile,startup_warning=store.startup()
     if initial_words is not None:
         _,initial_words=core.pattern(initial_words)
         active_id=None;active_profile={'name':'自訂（未儲存）','keywords':initial_words}
-    root=tk.Tk()
+    class DropRoot(tk.Tk, TkinterDnD.DnDWrapper):
+        pass
+
+    root=DropRoot()
+    try:
+        TkinterDnD._require(root)
+        drag_drop = True
+    except RuntimeError:
+        drag_drop = False
     if smoke_test:root.withdraw()
     if smoke_test and smoke_scale is not None:root.tk.call('tk','scaling',smoke_scale)
     root.title(meta.APP_NAME+' '+core.VERSION)
@@ -26,59 +38,82 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
     root.geometry(smoke_size if smoke_test and smoke_size else f'1140x{min(880,available_height)}')
     root.minsize(900,min(640,available_height))
     root.columnconfigure(0,weight=1)
-    root.rowconfigure(7,weight=3,minsize=40)
-    root.rowconfigure(10,weight=1,minsize=24)
-    paths=list(initial);reports={};errors={};selection=set();rows={};events=queue.Queue();busy=False
+    root.rowconfigure(1,weight=1)
+    style=ttk.Style(root)
+    style.theme_use('clam')
+    root.option_add('*Font', ('Microsoft JhengHei', 10))
+    background='#f1f5f9'
+    root.configure(background=background)
+    style.configure('.', background=background, foreground='#193449', font=('Microsoft JhengHei',10))
+    style.configure('Treeview', background='#ffffff', fieldbackground='#ffffff', rowheight=27)
+    style.map('Treeview', background=[('selected','#c8e5ee')], foreground=[('selected','#153c50')])
+    style.configure('Treeview.Heading', background='#e4edf3', font=('Microsoft JhengHei',10,'bold'))
+    style.configure('TNotebook.Tab', padding=(15,7))
+    style.map('TNotebook.Tab', background=[('selected','#d7ebf0')])
+    style.configure('Accent.TButton', background='#096778', foreground='#ffffff', padding=(10,4))
+    style.map('Accent.TButton', background=[('disabled','#dbe4ea'),('active','#08778a')], foreground=[('disabled','#5d6f7a')])
+    style.configure('Hint.TLabel',foreground='#3f5e70')
+    paths=[];reports={};errors={};selection=set();rows={};events=queue.Queue();busy=False
     dest_last=None
-    title=ttk.Label(root,text='交付文件前，檢查並整理指定內容與範本殘留',font=('Microsoft JhengHei',16))
-    title.grid(row=0,column=0,sticky='ew',padx=16,pady=(14,5))
-    intro=ttk.Label(root,text='原檔保留。舊 Office／RTF 需桌面版 Office 轉檔；PDF 刪除整個文字物件；郵件附件保留。')
-    intro.grid(row=1,column=0,sticky='ew',padx=16)
+    header=ttk.Frame(root,padding=(16,10,16,8));header.grid(row=0,column=0,sticky='ew')
+    title=ttk.Label(header,text='文件整理工作台',font=('Microsoft JhengHei',17,'bold'))
+    title.pack(anchor='w')
+    intro=ttk.Label(header,text='加入檔案後選擇所需的操作。完成後另存副本。',style='Hint.TLabel')
+    intro.pack(anchor='w',pady=(2,0))
+    notebook=ttk.Notebook(root);notebook.grid(row=1,column=0,sticky='nsew',padx=12)
+    page=ttk.Frame(notebook);notebook.add(page,text='關鍵字掃描')
+    page.columnconfigure(0,weight=1)
+    page.rowconfigure(7,weight=3,minsize=54)
+    page.rowconfigure(10,weight=1,minsize=28)
+    batch=None
     keywords=tk.StringVar(value='; '.join(active_profile['keywords']))
-    entryrow=ttk.Frame(root);entryrow.grid(row=2,column=0,sticky='ew',padx=16,pady=10)
+    entryrow=ttk.Frame(page);entryrow.grid(row=2,column=0,sticky='ew',padx=14,pady=(9,6))
     ttk.Label(entryrow,text='關鍵字（分號分隔）：').pack(side='left')
     keyentry=ttk.Entry(entryrow,textvariable=keywords);keyentry.pack(side='left',fill='x',expand=True)
-    profile_row=ttk.Frame(root);profile_row.grid(row=3,column=0,sticky='ew',padx=16,pady=(0,8))
+    profile_row=ttk.Frame(page);profile_row.grid(row=3,column=0,sticky='ew',padx=14,pady=(0,5))
     ttk.Label(profile_row,text='關鍵字清單：').pack(side='left')
     profile_combo=ttk.Combobox(profile_row,state='readonly',width=25);profile_combo.pack(side='left',padx=(0,8))
     profile_buttons=[];profile_choices=[]
     profile_note=tk.StringVar(value=startup_warning)
-    profile_note_row=ttk.Frame(root);profile_note_row.grid(row=4,column=0,sticky='ew',padx=16,pady=(0,5))
+    profile_note_row=ttk.Frame(page);profile_note_row.grid(row=4,column=0,sticky='ew',padx=14,pady=(0,5))
     profile_note_row.columnconfigure(0,weight=1)
     profile_note_label=ttk.Label(profile_note_row,textvariable=profile_note,wraplength=700)
     profile_note_label.grid(row=0,column=0,sticky='ew')
     profile_utilities=ttk.Frame(profile_note_row);profile_utilities.grid(row=0,column=1,sticky='e',padx=(8,0))
-    toolbar=ttk.Frame(root);toolbar.grid(row=5,column=0,sticky='ew',padx=16,pady=(0,8))
+    toolbar=ttk.Frame(page);toolbar.grid(row=5,column=0,sticky='ew',padx=14,pady=(0,6))
     all_buttons=[]
-    files=ttk.Treeview(root,columns=('format','status'),show='tree headings',height=3)
+    file_table=ttk.Frame(page);file_table.grid(row=6,column=0,sticky='ew',padx=14)
+    files=ttk.Treeview(file_table,columns=('format','status'),show='tree headings',height=2)
     files.heading('#0',text='檔案');files.heading('format',text='格式');files.heading('status',text='掃描狀態')
-    files.column('#0',width=680);files.column('format',width=70);files.column('status',width=270)
-    files.grid(row=6,column=0,sticky='ew',padx=16)
-    pane=ttk.Frame(root);pane.grid(row=7,column=0,sticky='nsew',padx=16,pady=8)
+    files.column('#0',width=540);files.column('format',width=65,stretch=False);files.column('status',width=160,stretch=False)
+    files.pack(side='left',fill='both',expand=True)
+    file_scroll=ttk.Scrollbar(file_table,orient='vertical',command=files.yview)
+    file_scroll.pack(side='right',fill='y');files.configure(yscrollcommand=file_scroll.set)
+    pane=ttk.Frame(page);pane.grid(row=7,column=0,sticky='nsew',padx=14,pady=6)
     hits=ttk.Treeview(pane,columns=('check','file','where','kind','context'),show='headings',height=12)
-    for col,text,width in [('check','清理',55),('file','檔案',200),('where','位置',190),('kind','類型',130),('context','命中內容',460)]:
+    for col,text,width in [('check','清理',60),('file','檔案',145),('where','位置',145),('kind','類型',105),('context','命中內容',350)]:
         hits.heading(col,text=text);hits.column(col,width=width,stretch=(col=='context'))
     scroll=ttk.Scrollbar(pane,orient='vertical',command=hits.yview);hits.configure(yscrollcommand=scroll.set)
     hits.pack(side='left',fill='both',expand=True);scroll.pack(side='right',fill='y')
-    options=ttk.Frame(root);options.grid(row=8,column=0,sticky='ew',padx=16)
+    options=ttk.Frame(page);options.grid(row=8,column=0,sticky='ew',padx=14)
     mode=tk.StringVar(value='keyword');prune=tk.BooleanVar(value=True)
     ttk.Label(options,text='文字處理：').pack(side='left')
     ttk.Radiobutton(options,text='只移除關鍵字',variable=mode,value='keyword').pack(side='left',padx=6)
     ttk.Radiobutton(options,text='清空選定段落／文字行',variable=mode,value='block').pack(side='left',padx=6)
     ttk.Checkbutton(options,text='同時清理 PPT 未使用範本',variable=prune).pack(side='left',padx=16)
-    help_label=ttk.Label(root,text='段落模式保留框架與格式，可能改變換行。名稱／屬性只清理字樣。雙擊結果可查看內容；點第一欄或按空白鍵切換勾選。')
-    help_label.grid(row=9,column=0,sticky='ew',padx=16,pady=6)
-    log_frame=ttk.Frame(root);log_frame.grid(row=10,column=0,sticky='nsew',padx=16)
-    log=tk.Text(log_frame,height=4,wrap='word',font=('Microsoft JhengHei',10))
+    help_label=ttk.Label(page,text='雙擊看內容。點第一欄或按空白鍵切換勾選。段落模式可能改變換行。',style='Hint.TLabel')
+    help_label.grid(row=9,column=0,sticky='ew',padx=14,pady=4)
+    log_frame=ttk.Frame(page);log_frame.grid(row=10,column=0,sticky='nsew',padx=14)
+    log=tk.Text(log_frame,height=3,wrap='word',font=('Microsoft JhengHei',10),relief='flat',padx=8,pady=5)
     log_scroll=ttk.Scrollbar(log_frame,orient='vertical',command=log.yview);log.configure(yscrollcommand=log_scroll.set)
     log.pack(side='left',fill='both',expand=True);log_scroll.pack(side='right',fill='y')
-    status=tk.StringVar(value='選擇檔案後按「掃描」。掃描不修改來源文件。')
-    status_label=ttk.Label(root,textvariable=status);status_label.grid(row=11,column=0,sticky='ew',padx=16,pady=8)
-    about=ttk.LabelFrame(root,text='關於作者');about.grid(row=12,column=0,sticky='ew',padx=16,pady=(0,12))
-    author_label=ttk.Label(about,text=meta.AUTHOR_DESCRIPTION,wraplength=1080)
-    author_label.pack(anchor='w',padx=8,pady=(5,2))
-    links=ttk.Frame(about);links.pack(anchor='w',padx=8,pady=(0,5))
-    import webbrowser,os
+    status=tk.StringVar(value='加入檔案後按「掃描」。'+('也可以拖曳檔案到清單。' if drag_drop else ''))
+    status_label=ttk.Label(page,textvariable=status,style='Hint.TLabel');status_label.grid(row=11,column=0,sticky='ew',padx=14,pady=5)
+    about=ttk.Frame(root);about.grid(row=2,column=0,sticky='ew',padx=16,pady=7)
+    author_label=ttk.Label(about,text=f'{meta.AUTHOR}　·　{meta.LICENSE_NAME}',style='Hint.TLabel')
+    author_label.pack(side='left',padx=(0,18))
+    links=ttk.Frame(about);links.pack(side='left')
+    import webbrowser
     for label,url in [('亞瑟 ASK 部落格',meta.BLOG_URL),('Facebook',meta.FACEBOOK_URL)]:
         link=ttk.Label(links,text=label,foreground='#175a9a',cursor='hand2');link.pack(side='left',padx=(0,18))
         link.bind('<Button-1>',lambda event,u=url:webbrowser.open(u))
@@ -179,16 +214,18 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
         b=ttk.Button(profile_utilities,text=label,command=fn);b.pack(side='left',padx=(7,0));profile_buttons.append(b)
     profile_combo.bind('<<ComboboxSelected>>',choose_profile)
     def update_controls():
-        for b in all_buttons:b.configure(state='disabled' if busy else 'normal')
-        for b in profile_buttons:b.configure(state='disabled' if busy else 'normal')
-        profile_combo.configure(state='disabled' if busy else 'readonly')
-        if not busy:
+        blocked=busy or (batch is not None and batch.busy)
+        for b in all_buttons:b.configure(state='disabled' if blocked else 'normal')
+        for b in profile_buttons:b.configure(state='disabled' if blocked else 'normal')
+        profile_combo.configure(state='disabled' if blocked else 'readonly')
+        if not blocked:
             save_btn.configure(state='normal' if reports or errors else 'disabled')
             can_clean=bool(selection) or (prune.get() and any(r['format']=='pptx' and r['can_clean'] for r in reports.values()))
             clean_btn.configure(state='normal' if can_clean else 'disabled')
             select_btn.configure(state='normal' if rows else 'disabled')
             deselect_btn.configure(state='normal' if rows else 'disabled')
-        keyentry.configure(state='disabled' if busy else 'normal')
+        keyentry.configure(state='disabled' if blocked else 'normal')
+        if batch is not None:batch.sync(paths)
 
     def clear_results():
         reports.clear();errors.clear();selection.clear();rows.clear()
@@ -198,12 +235,35 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
             if files.exists(iid):files.item(iid,values=(Path(p).suffix,'待掃描'))
         update_controls()
 
-    def add():
-        chosen=filedialog.askopenfilenames(title='選擇要掃描的文件',filetypes=[('支援文件',' '.join('*'+ext for ext in sorted(core.SUPPORTED))),('所有檔案','*.*')])
+    def add_paths(chosen):
+        if busy or (batch is not None and batch.busy):return
+        known={os.path.normcase(p) for p in paths}
+        added=[];skipped=0
         for p in chosen:
-            if p not in paths:
-                paths.append(p);files.insert('','end',iid=str(len(paths)-1),text=p,values=(Path(p).suffix,'待掃描'))
+            path=Path(p).resolve()
+            if path.name.startswith('~$') or path.suffix.lower() not in core.SUPPORTED or not path.is_file():
+                skipped+=1;continue
+            canonical=os.path.normcase(str(path))
+            if canonical in known:continue
+            known.add(canonical);added.append(str(path))
+        for p in added:
+            paths.append(p);files.insert('','end',iid=str(len(paths)-1),text=p,values=(Path(p).suffix,'待掃描'))
+        # Appending leaves prior findings and checkboxes valid.
+        update_controls()
+        if added or skipped:
+            message=f'已加入 {len(added)} 份檔案。'+(f'略過 {skipped} 份不支援的項目。' if skipped else '')
+            status.set(message)
+            if batch is not None:batch.status.set(message)
+
+    def add(allowed=core.SUPPORTED):
+        add_paths(filedialog.askopenfilenames(parent=root,title='加入文件',filetypes=[('支援文件',' '.join('*'+ext for ext in sorted(allowed))),('所有檔案','*.*')]))
+
+    def remove_paths(removed):
+        paths[:]=[p for p in paths if p not in removed]
+        files.delete(*files.get_children())
+        for i,p in enumerate(paths):files.insert('','end',iid=str(i),text=p,values=(Path(p).suffix,'待掃描'))
         clear_results()
+        status.set('已更新清單。請重新掃描關鍵字。')
 
     def remove_all():
         paths.clear();files.delete(*files.get_children());clear_results();log.delete('1.0','end')
@@ -220,7 +280,7 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
         update_controls()
 
     def toggle(event=None):
-        if busy:return
+        if busy or (batch is not None and batch.busy):return
         iid=hits.identify_row(event.y) if event is not None and getattr(event,'num',None)==1 else (hits.selection()[0] if hits.selection() else '')
         if not iid or iid not in rows:return
         path,f=rows[iid]
@@ -341,16 +401,38 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
         root.after(120,poll)
 
     def close():
-        if busy:messagebox.showinfo('正在處理','請等處理完成後再關閉，避免中斷另存。');return
+        if busy or (batch is not None and batch.busy):messagebox.showinfo('正在處理','請等處理完成後再關閉，避免中斷另存。');return
         root.destroy()
 
-    def button(label,fn):
-        b=ttk.Button(toolbar,text=label,command=fn);b.pack(side='left',padx=(0,7));all_buttons.append(b);return b
-    button('選擇檔案',add);button('清除清單',remove_all);button('掃描',scan)
+    def button(label,fn,accent=False):
+        b=ttk.Button(toolbar,text=label,command=fn,style='Accent.TButton' if accent else 'TButton');b.pack(side='left',padx=(0,6));all_buttons.append(b);return b
+    button('選擇檔案',add);button('清除清單',remove_all);button('掃描',scan,True)
     select_btn=button('全選可清理項目',lambda:set_all(True));deselect_btn=button('取消勾選',lambda:set_all(False))
     save_btn=button('儲存掃描報告',save);clean_btn=button('清理選取項目並另存',clean)
     hits.bind('<Button-1>',click);hits.bind('<space>',toggle);hits.bind('<Double-1>',detail)
-    for i,p in enumerate(paths):files.insert('','end',iid=str(i),text=p,values=(Path(p).suffix,'待掃描'))
+    def keyword_jobs(ppt_paths):
+        jobs={}
+        selected={}
+        for path,finding in selection:selected.setdefault(path,[]).append(finding)
+        for path in ppt_paths:
+            if path in reports and path in selected:
+                report=reports[path]
+                jobs[path]=ppt_batch.KeywordSelection(tuple(sorted(selected[path])),tuple(report['keywords']),
+                                                     report['source_sha256'],mode.get(),prune.get())
+        return jobs
+
+    batch=BatchView(notebook,add=lambda:add(ppt_batch.FORMATS),remove=remove_paths,clear=remove_all,
+                    destination=destination,keyword_jobs=keyword_jobs,other_busy=lambda:busy,update=update_controls)
+    notebook.add(batch,text='PowerPoint 批次處理')
+    if drag_drop:
+        def receive(event):
+            add_paths(root.tk.splitlist(event.data))
+            return 'copy'
+        for widget in (root,files,batch.files):
+            widget.drop_target_register(DND_FILES)
+            widget.dnd_bind('<<Drop>>',receive)
+    else:batch.intro.configure(text='按「加入檔案」選擇簡報。兩個分頁共用檔案。')
+    add_paths(initial)
     keywords.trace_add('write',invalidate);prune.trace_add('write',lambda *args:update_controls())
     root.protocol('WM_DELETE_WINDOW',close);update_controls()
     skipped=refresh_profiles()
@@ -358,7 +440,7 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
     elif skipped:profile_note.set(f'略過 {skipped} 份無效清單；有效清單可從下拉選單載入。')
     else:profile_description()
     if smoke_test:
-        if smoke_callback:smoke_callback({'keywords':keywords,'save':save_profile,'startup':set_startup,'restore':restore_generic,'import':import_profile,'combo':profile_combo,'choose':choose_profile,'reload':reload_startup,'open_folder':open_profile_folder})
+        if smoke_callback:smoke_callback({'keywords':keywords,'save':save_profile,'startup':set_startup,'restore':restore_generic,'import':import_profile,'combo':profile_combo,'choose':choose_profile,'reload':reload_startup,'open_folder':open_profile_folder,'batch':batch,'notebook':notebook,'add_paths':add_paths})
         root.update_idletasks()
         # Withdrawn windows need a configure event to exercise their layout without taking focus.
         root.event_generate('<Configure>',width=root.winfo_width(),height=root.winfo_height())
@@ -366,6 +448,8 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
         footer_visible=about.winfo_y()+about.winfo_height()<=root.winfo_height() and links.winfo_y()+links.winfo_height()<=about.winfo_height()
         result={'version':core.VERSION,'title':root.title(),'buttons':[b.cget('text') for b in all_buttons],
                 'files':len(files.get_children()),'clean_disabled_initially':str(clean_btn.cget('state'))=='disabled',
+                'drag_drop':drag_drop,'tabs':[notebook.tab(tab,'text') for tab in notebook.tabs()],
+                'ppt_files':len(batch.files.get_children()),
                 'author':meta.AUTHOR,'license':meta.LICENSE_NAME,'source_link':'public' if meta.SOURCE_REPO_URL else 'local',
                 'profile_buttons':[b.cget('text') for b in profile_buttons],'keyword_count':len(keylist()),
                 'keyword_sha256':core.digest(json.dumps(keylist(),ensure_ascii=False).encode('utf-8')),
@@ -379,6 +463,8 @@ def gui(initial=(),smoke_test=False,profile_store=None,initial_words=None,smoke_
     poll();root.mainloop()
 
 def main():
+    if len(sys.argv)==3 and sys.argv[1]=='--ppt-batch-worker':
+        return ppt_batch.native_worker(sys.argv[2])
     if len(sys.argv)==3 and sys.argv[1]=='--convert-worker':
         from document_legacy import worker
         return worker(sys.argv[2])
