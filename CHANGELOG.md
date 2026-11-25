@@ -2,6 +2,13 @@
 
 [繁體中文說明](README.md) · [English README](README.en.md)
 
+## 3.6.0 — 2026-11-25
+
+- PowerPoint 批次處理新增「清除動畫效果」，可獨立勾選並用於合併輸出。保留投影片切換效果與媒體檔案。
+- PowerPoint、Word 和 Excel 的個別批次副本統一使用 `.cleaned` 檔名後綴。
+
+Adds optional PowerPoint animation removal for individual presentations and merged output. Slide transitions and media files are preserved. Individual PowerPoint, Word, and Excel batch copies use the `.cleaned` filename suffix.
+
 ## 3.5.3 — 2026-11-20
 
 - 本次公開版納入 3.4.0 至 3.5.2 的 Word／Excel 批次清理及合併、可調整的檔案清單窗格和拖曳排序。

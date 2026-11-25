@@ -83,6 +83,7 @@ class BatchView(ttk.Frame):
         self.notes = tk.BooleanVar()
         self.hidden = tk.BooleanVar()
         self.comments = tk.BooleanVar()
+        self.animations = tk.BooleanVar()
         self.keywords = tk.BooleanVar()
         self.merge = tk.BooleanVar()
         self.word_comments = tk.BooleanVar()
@@ -94,7 +95,8 @@ class BatchView(ttk.Frame):
         self.checks = []
         groups = [
             ('PowerPoint', [('刪除備忘稿', self.notes), ('刪除隱藏投影片', self.hidden),
-                            ('刪除註解', self.comments), ('依清單順序合併', self.merge)]),
+                            ('刪除註解', self.comments), ('清除動畫效果', self.animations),
+                            ('依清單順序合併', self.merge)]),
             ('Word', [('刪除註解', self.word_comments), ('接受所有修訂並停止追蹤', self.word_accept),
                       ('依清單順序合併', self.word_merge)]),
             ('Excel', [('刪除串列註解', self.excel_comments), ('刪除附註', self.excel_notes),
@@ -111,7 +113,7 @@ class BatchView(ttk.Frame):
                 check = ttk.Checkbutton(row, text=label, variable=var, command=self.update_controls)
                 check.pack(side='left', padx=(0, 11))
                 self.checks.append(check)
-        self.cleanup_options = [(self.notes, self.hidden, self.comments), (self.word_comments, self.word_accept),
+        self.cleanup_options = [(self.notes, self.hidden, self.comments, self.animations), (self.word_comments, self.word_accept),
                                 (self.excel_comments, self.excel_notes)]
         all_cleanup = tuple(option for group in self.cleanup_options for option in group)
         self.cleanup_buttons = []
@@ -325,7 +327,9 @@ class BatchView(ttk.Frame):
             messagebox.showerror('無法開啟輸出資料夾', str(error), parent=self)
 
     def actions(self):
-        return office_batch.Actions(ppt_batch.Options(self.notes.get(), self.hidden.get(), self.comments.get()),
+        ppt_options = ppt_batch.Options(notes=self.notes.get(), hidden=self.hidden.get(),
+                                        comments=self.comments.get(), animations=self.animations.get())
+        return office_batch.Actions(ppt_options,
                                     self.merge.get(), self.word_comments.get(), self.word_accept.get(),
                                     self.excel_comments.get(), self.excel_notes.get(),
                                     self.word_merge.get(), self.excel_merge.get())

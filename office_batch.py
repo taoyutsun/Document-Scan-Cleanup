@@ -58,7 +58,7 @@ def plan(paths, actions, keywords):
             group = tuple(path for path in paths if family(path) == kind)
             if len(group) >= 2:
                 groups[kind] = group
-    selected = {'PowerPoint': any((actions.ppt.notes, actions.ppt.hidden, actions.ppt.comments)),
+    selected = {'PowerPoint': actions.ppt.has_cleanup,
                 'Word': actions.word_comments or actions.word_accept,
                 'Excel': actions.excel_comments or actions.excel_notes}
     for path in paths:
@@ -249,7 +249,7 @@ def process(task, directory, actions, keywords):
         if core.digest(path.read_bytes()) != source_hash:
             raise ValueError(f'{path.name} 在處理時已變更，請重新執行。')
     directory.mkdir(parents=True, exist_ok=True)
-    name = ({'Word': '合併文件', 'Excel': '合併活頁簿'}[task.kind] if task.merge else source.stem+'.批次清理')
+    name = ({'Word': '合併文件', 'Excel': '合併活頁簿'}[task.kind] if task.merge else f'{source.stem}.cleaned')
     output = directory / (name+extension)
     with output.open('xb') as stream:
         try:

@@ -28,6 +28,12 @@ AUTHORS = {
     'application/vnd.ms-powerpoint.authors+xml',
 }
 PRESENTATION = 'ppt/presentation.xml'
+ANIMATION_PART_TYPES = {
+    'application/vnd.openxmlformats-officedocument.presentationml.slide+xml',
+    'application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml',
+    'application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml',
+}
+TIMING = '{' + opc.P + '}timing'
 RID = '{' + opc.R + '}id'
 MODERN_COMMENT = '{http://schemas.microsoft.com/office/powerpoint/2018/8/main}commentRel'
 LABEL_NS = '{http://schemas.microsoft.com/office/2020/mipLabelMetadata}'
@@ -39,6 +45,11 @@ class Options:
     notes: bool = False
     hidden: bool = False
     comments: bool = False
+    animations: bool = False
+
+    @property
+    def has_cleanup(self):
+        return self.notes or self.hidden or self.comments or self.animations
 
 
 @dataclass(frozen=True)
@@ -213,6 +224,23 @@ def prepare(path, options, keywords=None):
     before = inspect(data)
     remove_annotations(data, options)
     return path, source_hash, data, before
+
+
+def remove_animation_timelines(data):
+    """Remove shared and per-slide timing without editing transitions or media parts."""
+    removed = 0
+    for part, kind in part_types(data).items():
+        if kind not in ANIMATION_PART_TYPES:
+            continue
+        root = opc.parse(data[part])
+        timelines = list(root.iter(TIMING))
+        if not timelines:
+            continue
+        for timeline in timelines:
+            timeline.getparent().remove(timeline)
+        data[part] = opc.xml(root)
+        removed += len(timelines)
+    return removed
 
 
 def active_labels(data):
@@ -404,7 +432,7 @@ def process(paths, directory, options, merge=False, keywords=None):
     if not paths or (merge and len(paths) < 2) or (not merge and len(paths) != 1):
         raise ValueError('合併至少需兩份簡報。個別清理每份簡報分開另存。')
     keywords = keywords or {}
-    if not (merge or options.notes or options.hidden or options.comments or keywords):
+    if not (merge or options.has_cleanup or keywords):
         raise ValueError('請勾選至少一個清理項目。')
     prepared = [prepare(path, options, keywords.get(path)) for path in paths]
     decks = [item[2] for item in prepared]
@@ -419,6 +447,8 @@ def process(paths, directory, options, merge=False, keywords=None):
     else:
         data = decks[0]
     remove_annotations(data, options)
+    # Clear timing on the final package, including timelines imported by PowerPoint during a merge.
+    timelines_removed = remove_animation_timelines(data) if options.animations else 0
     after = inspect(data)
     if (after['slides'] != sum(item['slides'] for item in before) - (hidden if options.hidden else 0)
             or after['hidden'] != (0 if options.hidden else hidden)
@@ -435,7 +465,7 @@ def process(paths, directory, options, merge=False, keywords=None):
             raise ValueError(f'處理期間來源發生變更：{path.name}')
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    name = '合併簡報.pptx' if merge else f'{prepared[0][0].stem}.批次清理.pptx'
+    name = '合併簡報.pptx' if merge else f'{prepared[0][0].stem}.cleaned.pptx'
     output = directory / name
     raw = write_package(data)
     # Exclusive output: existing documents are never overwritten.
@@ -447,4 +477,5 @@ def process(paths, directory, options, merge=False, keywords=None):
             output.unlink(missing_ok=True)
             raise
     return {'output': str(output), 'source': [str(item[0]) for item in prepared], 'before': before, 'after': after,
+            'animation_timelines_removed': timelines_removed,
             'keyword_items': sum(len(keywords[path].ids) for path in paths if path in keywords)}

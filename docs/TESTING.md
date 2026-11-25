@@ -34,6 +34,8 @@ GitHub Actions runs the synthetic suite, the public-file audit and a Windows bui
 
 ## Portable executable checks
 
+Version 3.6.0 passed 62 automated tests. Local Windows checks reopened synthetic PPTX, legacy PPT, and merged PowerPoint results to verify that ordinary and click-triggered animations were removed and the fade transition survived. Separate checks verified `.cleaned` names for individual PPTX, DOCX, and XLSX batch copies and confirmed that existing outputs were not overwritten.
+
 Version 3.5.3 passed 61 automated tests. Local Windows validation also checked the frozen executable and reopened and saved a merged document in desktop Word to confirm that the input custom XML stores survived the round trip.
 
 Version 3.3.1 passed 53 synthetic tests. Local validation also checked the frozen GUI and the PowerPoint worker, including ordered merging, optional slide and notes removal, and retention of active label metadata. Desktop PowerPoint integration is separate from the synthetic CI suite.

@@ -4,7 +4,7 @@
 
 **繁體中文** | [English](README.en.md)
 
-[下載 v3.5.3（Windows x64 ZIP）](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.5.3/Document-Scan-Cleanup-v3.5.3-windows-x64.zip) · [版本說明](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.5.3)
+[下載 v3.6.0（Windows x64 ZIP）](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.6.0/Document-Scan-Cleanup-v3.6.0-windows-x64.zip) · [版本說明](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.6.0)
 
 交付文件給客戶、供應商或合作夥伴前，依自己指定的關鍵字檢查內容、選擇要移除的項目，再另存整理好的副本。工具支援 PowerPoint、Word、Excel、PDF、郵件與常見文字格式，盡量保留原有格式與版面。
 
@@ -49,6 +49,8 @@ Word 的自訂 XML 會依資料識別碼核對，允許 Word 另存時重新編�
 同一批也可以清理關鍵字。先在「關鍵字掃描」檢視並勾選命中項目，再勾選批次分頁的「套用已勾選的關鍵字項目」。工具先處理選取的文字，再執行各格式的其他操作。舊 `.doc`、`.rtf` 與 `.xls` 需裝對應桌面版 Office，將輸出為 DOCX 或 XLSX。
 
 一般 PPTX 的備忘稿和註解可直接清理。刪除隱藏投影片、合併及舊 `.ppt`／`.pps` 轉換需要 Windows 桌面版 PowerPoint，執行前請關閉 PowerPoint。合併需相同投影片尺寸。建議在分享前用 PowerPoint 開啟副本，確認版面及內容符合需求。
+
+自 v3.6.0 起，可在 PowerPoint 那一列勾選「清除動畫效果」，單獨處理或搭配合併。這個選項預設不勾選，會清除投影片、版面配置與母片的動畫時間軸，保留投影片切換效果與媒體檔案。動畫時間軸上的媒體自動播放或觸發設定也會清除。一般 PPTX 可直接處理。
 
 **v3.3.1 修正敏感度標籤的誤判。** Office 有時會留下標籤已移除的紀錄，這類紀錄可以通過批次處理檢查。若清單中有簡報使用有效標籤，且有標籤的簡報彼此相容，工具會以其中一份作為底稿，仍按清單順序排列投影片。若有效標籤不一致，或另存後無法確認原有標籤完整保留，工具會停止輸出。
 
@@ -115,6 +117,8 @@ Excel 頁首頁尾、郵件標題及名稱／屬性只移除指定字樣；CSV�
 ## 結果與原檔保留
 
 關鍵字清理會建立 `Document_Cleanup_日期時間` 資料夾，每份文件各有一個編號子資料夾，內含清理副本與 TXT／JSON 變更報告。Office 批次工具會把副本集中在 `Office_Batch_日期時間` 資料夾，按設定另存個別文件，或產生 `合併簡報.pptx`、`合併文件.docx`、`合併活頁簿.xlsx`。兩種流程均附 `batch.report.json`。只需檢查時，可選「儲存掃描報告」。
+
+個別 Office 批次副本在副檔名前加上 `.cleaned`，例如 `簡報.cleaned.pptx`、`文件.cleaned.docx` 或 `活頁簿.cleaned.xlsx`。
 
 來源文件在掃描後被編輯時，工具會要求重新掃描；輸出已存在時停止，不覆寫已有結果。不同儲存位置或引用可能重複命中，數量不等於不同敏感內容的數量。
 

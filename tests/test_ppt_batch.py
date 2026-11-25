@@ -8,6 +8,7 @@ from lxml import etree
 
 import document_cleanup_core as core
 import fixtures
+import office_batch
 import ppt_batch as batch
 import ppt_structure as opc
 
@@ -75,6 +76,45 @@ class PptBatchTests(unittest.TestCase):
         with self.assertRaisesRegex(core.DocumentError, '掃描後已變更'):
             batch.process([self.source], self.folder / 'stale', batch.Options(notes=True), keywords={self.source: job})
         self.assertFalse((self.folder / 'stale').exists())
+
+    def test_animation_only_batch_clears_timelines_but_preserves_transitions(self):
+        slide = 'ppt/slides/slide1.xml'
+        master = 'ppt/slideMasters/slideMaster1.xml'
+        layout = 'ppt/slideLayouts/slideLayout1.xml'
+        expected = self.data.copy()
+        p = '{' + opc.P + '}'
+        transition = opc.parse(f'<p:transition xmlns:p="{opc.P}" advTm="3000"><p:fade/></p:transition>'.encode())
+        root = opc.parse(self.data[slide])
+        root.append(transition)
+        self.data[slide] = expected[slide] = opc.xml(root)
+        timing = f'<p:timing xmlns:p="{opc.P}"><p:tnLst><p:par><p:cTn id="1" nodeType="tmRoot"/></p:par></p:tnLst></p:timing>'
+        for part in (slide, master, layout):
+            root = opc.parse(self.data[part])
+            root.append(opc.parse(timing.encode()))
+            self.data[part] = opc.xml(root)
+        self.source.write_bytes(batch.write_package(self.data))
+        original = self.source.read_bytes()
+
+        actions = office_batch.Actions(ppt=batch.Options(animations=True))
+        tasks, skipped = office_batch.plan([self.source], actions, {})
+        self.assertFalse(skipped)
+        self.assertEqual(len(tasks), 1)
+        result = office_batch.process(tasks[0], self.folder / 'animations', actions, {})
+        output = batch.read_presentation(Path(result['output']).read_bytes())
+        self.assertEqual(result['animation_timelines_removed'], 3)
+        self.assertEqual(set(output), set(expected))
+        for part in (slide, master, layout):
+            self.assertEqual(etree.tostring(opc.parse(output[part])), etree.tostring(opc.parse(expected[part])))
+        for part in set(expected) - {slide, master, layout}:
+            self.assertEqual(output[part], expected[part], part)
+        self.assertIsNotNone(opc.parse(output[slide]).find(p + 'transition/' + p + 'fade'))
+        self.assertEqual(self.source.read_bytes(), original)
+
+        untouched = batch.process([self.source], self.folder / 'notes', batch.Options(notes=True))
+        preserved = batch.read_presentation(Path(untouched['output']).read_bytes())
+        self.assertEqual(untouched['animation_timelines_removed'], 0)
+        for part in (slide, master, layout):
+            self.assertEqual(preserved[part], self.data[part])
 
     def label_fixture(self, enabled, removed, label_id='synthetic-label'):
         part = 'docMetadata/LabelInfo.xml'

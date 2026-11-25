@@ -4,7 +4,7 @@
 
 [繁體中文](README.md) | **English**
 
-[Download v3.5.3 (Windows x64 ZIP)](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.5.3/Document-Scan-Cleanup-v3.5.3-windows-x64.zip) · [Release notes](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.5.3)
+[Download v3.6.0 (Windows x64 ZIP)](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/download/v3.6.0/Document-Scan-Cleanup-v3.6.0-windows-x64.zip) · [Release notes](https://github.com/taoyutsun/Document-Scan-Cleanup/releases/tag/v3.6.0)
 
 Before sharing documents with customers, suppliers or partners, scan for text you specify, review the matches, remove selected content and save a separate copy. Supports PowerPoint, Word, Excel, PDF, email and common text formats while preserving existing document structure where supported.
 
@@ -49,6 +49,8 @@ Word custom XML is verified by its data store ID, so Word can renumber its packa
 To include keyword cleanup in the same run, scan the files first and review the checked findings. Select the option to apply checked keyword findings in the batch tab. The tool applies selected text changes before format-specific operations. Legacy `.doc`, `.rtf` and `.xls` files require the corresponding desktop Office application and save as DOCX or XLSX.
 
 Standard PPTX notes and comments can be removed directly. Removing hidden slides, merging, or converting legacy `.ppt`/`.pps` files requires Windows desktop PowerPoint. Close PowerPoint before those operations and use matching slide dimensions for a merge. Review the saved copy before sharing.
+
+Starting with v3.6.0, select **清除動畫效果** (Clear Animations) in the PowerPoint row when cleaning individual files or merging presentations. The checkbox is off by default. It clears animation timelines on slides, layouts, and masters while preserving slide transitions and media files. Media autoplay or trigger settings stored in the animation timeline are also cleared. Standard PPTX files can be processed directly.
 
 **v3.3.1 fixes a false positive in sensitivity label detection.** Office may keep a record after a label is removed, and that record no longer blocks batch processing. When the labelled merge inputs have matching active label metadata, the tool uses a labelled presentation as the base and keeps the slide order shown in the list. It stops if active labels differ or if it cannot verify that the original active label metadata survived saving.
 
@@ -114,6 +116,8 @@ Names/properties, Excel headers/footers and email subjects use keyword removal o
 ## Outputs and originals
 
 Keyword cleanup creates a `Document_Cleanup_timestamp` folder with numbered per-file subfolders containing cleaned copies and TXT/JSON change reports. The Office batch writes individual copies and optional merged PPTX, DOCX or XLSX files under one `Office_Batch_timestamp` folder. Both workflows write `batch.report.json`. Scan-only reports can be saved separately.
+
+Individual Office batch copies add `.cleaned` before the extension, as in `presentation.cleaned.pptx`, `document.cleaned.docx`, and `workbook.cleaned.xlsx`.
 
 If the source changes after scanning, scan again. Existing outputs are never overwritten. A match can appear in multiple storage locations or references, so match counts do not represent unique pieces of sensitive information.
 
